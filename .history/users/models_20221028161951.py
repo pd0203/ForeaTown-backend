@@ -28,7 +28,7 @@ class User(AbstractUser):
     is_male = models.BooleanField(null=True, default=True)
     location = models.CharField(max_length=30, unique=False, null=True)
     profile_img_url = models.CharField(max_length=100, unique=False, null=True) 
-    country_id = models.ForeignKey('foreatown.Country', related_name='country', null=True, on_delete=models.CASCADE)
+    country_id = models.ForeignKey('dreamer.MBTI', related_name='user', null=True, on_delete=models.CASCADE)
     last_login = models.DateTimeField(auto_now=True) 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -48,4 +48,4 @@ class User(AbstractUser):
     class Meta:
         db_table = 'Users'
     def __str__(self):
-        return self.name + ': ' + self.email
+        return self.email
