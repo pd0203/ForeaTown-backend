@@ -18,7 +18,7 @@ from django.utils import timezone
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from json.decoder import JSONDecodeError
-from copacabana.settings import SIMPLE_JWT
+from myforeatown.settings import SIMPLE_JWT
 
 import requests, json, jwt
 
@@ -69,50 +69,51 @@ def status_validator(func):
         return func(self, request, *args, **kwargs)
     return wrapper
 
-# # 고등학교 리스트를 가져오는 class
-# class HighschoolRead(generics.ListCreateAPIView):
-#     queryset = Nofilter_highschool.objects.all()
-#     serializer_class = NofilterHighschoolListSerializer
-#     def list(self, request):
-#         try:
-#             queryset = self.get_queryset()
-#             serializer = NofilterHighschoolListSerializer(queryset, many=True)
-#             return Response(serializer.data)
-#         except Exception as e:
-#             print(e)
-#             raise APIException(detail=e)    
 
+# 셀티 이벤트 및 확장버전용으로 유저가 고등학교 입력시 자동완성으로 보여줄 리스트를 반환하는 API  
+class CountryListAPI(ModelViewSet):
+    serializer_class = CountryReadSerializer
+    def get_queryset(self): 
+        queryset = Country.objects.all()
+        country = self.request.query_params.get('name', '') 
+        if country: 
+           queryset = Country.objects.order_by('name').values('name').distinct()
+           queryset = queryset.filter(name__icontains=country)
+        return queryset 
 
-# User CRUD API
-class UserAPI(ModelViewSet):
+# Mypage에 필요한 MyInfo API
+class MyInfoAPI(ModelViewSet):
     permission_classes = [IsAuthenticated]
     def get_queryset(self): 
-       return User.objects.all()   
+        return User.objects.all()   
     def get_object(self): 
-       queryset = self.get_queryset()
-       if self.action == 'update':
-          return get_object_or_404(queryset, user=self.request.user)
-       return get_object_or_404(self.get_queryset()) 
+        queryset = self.get_queryset()
+        if self.action == 'partial_update' or self.action == 'retrieve':
+           return get_object_or_404(queryset, id=self.request.user.id)
+        return get_object_or_404(self.get_queryset()) 
     def get_serializer_class(self):
-        if self.action == 'update':
-            return UserUpdateSerializer
-        return UserReadSerializer 
+        if self.action == 'partial_update':
+           return UserUpdateSerializer
+        if self.action == 'retrieve':
+           return UserReadSerializer 
     # user가 mypage에 접근했을 때 보여주는 정보를 불러오는 API 
     def retrieve(self, request):
         try:
-            user = self.get_queryset().get(id=request.user.id)
-            user_serializer = self.get_serializer(user)
-            post_serializer = UserAllPostSerializer(user)
-            data = {
-                "user_info": user_serializer.data,
-                "user_posts": post_serializer.data,
-            }
-            return Response(data)
-        except Exception as e:
-            print(e)
-            raise APIException(detail=e)
+            # 토큰 인증된 유저 객체 
+            instance = self.get_object()
+            # 해당 유저 객체 유효성 검증해서 필요한 필드값만 불러오기 
+            serializer = self.get_serializer(instance)
+            # 불러온 유저 객체 반환 
+            return Response(serializer.data)
+        except ValueError as v:
+            return Response({'ERROR_MESSAGE': v.args}, status=status.HTTP_400_BAD_REQUEST) 
+    def partial_update(self, request, *args, **kwargs):
+        try: 
+          kwargs['partial'] = True
+          return self.update(request, *args, **kwargs)
+        except ValueError as v:
+            return Response({'ERROR_MESSAGE': v.args}, status=status.HTTP_400_BAD_REQUEST) 
 
-#############################################################################  -  완료
 # User 회원가입시 입력된 추가정보를 받아 User 데이터를 수정하는 API
 class UserInfoUpdateAPI(generics.UpdateAPIView):
     permission_classes = [IsAuthenticated]
@@ -123,35 +124,11 @@ class UserInfoUpdateAPI(generics.UpdateAPIView):
        return get_object_or_404(queryset, id=self.request.user.id)
     def partial_update(self, request, *args, **kwargs):
         try: 
-          request.data['birthday'] = self.get_birthday(request.data['registration_number'])
-          request.data['is_male'] = self.get_gender(request.data['registration_number'])
           kwargs['partial'] = True
           return self.update(request, *args, **kwargs)
         except ValueError as v:
             return Response({'ERROR_MESSAGE': v.args}, status=status.HTTP_400_BAD_REQUEST) 
-    def get_birthday(self, raw_registration_number):
-        registration_number = raw_registration_number.split('/')
-        if registration_number[3] == '1' or registration_number[3] == '2' or registration_number[3] == '5' or registration_number[3] == '6':
-           registration_number[0] = '19' + registration_number[0] 
-        elif registration_number[3] == '3' or registration_number[3] == '4' or registration_number[3] == '7' or registration_number[3] == '8': 
-           registration_number[0] = '20' + registration_number[0]
-        else:
-           raise ValueError('주민등록번호 7번쨰 자리 수가 유효하지 않습니다')
-        registration_number.pop() 
-        formatted_birthday = '-'.join(registration_number)
-        return datetime.strptime(formatted_birthday, "%Y-%m-%d").date()
-    def get_gender(self, raw_registration_number): 
-        registration_number = raw_registration_number.split('/')
-        is_male = True 
-        if registration_number[3] == '1' or registration_number[3] == '3' or registration_number[3] == '5' or registration_number[3] == '7':
-           is_male = True
-        elif registration_number[3] == '2' or registration_number[3] == '4' or registration_number[3] == '6' or registration_number[3] == '8':
-           is_male = False
-        else :
-           raise ValueError('주민등록번호 7번쨰 자리 수가 유효하지 않습니다')
-        return is_male
 
-#############################################################################  -  완료
 # 자체 서비스 회원가입 API - 기존 dj-rest-auth 제공 회원가입 기능을 커스터마이징
 class SignupAPI(RegisterView):
     def create(self, request, *args, **kwargs):
@@ -173,7 +150,6 @@ class SignupAPI(RegisterView):
             response = Response(status=status.HTTP_204_NO_CONTENT, headers=headers)
         return response
 
-#############################################################################  -  완료
 # 자체 서비스 로그인 API - 기존 dj-rest-auth 제공 로그인 기능을 커스터마이징 
 class LoginAPI(LoginView): 
     def get_response(self):
@@ -210,7 +186,6 @@ class LoginAPI(LoginView):
             set_jwt_cookies(response, self.access_token, self.refresh_token)
         return response
 
-#############################################################################  -  완료
 # 카카오 로그인/회원가입 API - Oauth 2.0 방식  
 def kakao_login(request): 
     try :
@@ -232,6 +207,7 @@ def kakao_login(request):
       kakao_account = user_data_json.get("kakao_account") 
       email = kakao_account.get("email")
       name = kakao_account.get("profile").get("nickname")
+      profile_image_url = kakao_account.get("profile").get("profile_image_url")
       # [4] Login and Signup 
       user = User.objects.get(email=email) 
       social_user = SocialAccount.objects.filter(user=user).first()
@@ -249,10 +225,12 @@ def kakao_login(request):
          raise ValueError('로그인에 실패했습니다. 다시 시도해주시기 바랍니다')
       accept_json = accept.json()
       accept_json.pop('user', None)
+      # 카카오톡 프로필 이미지가 변경됬을 경우에 대비해서 매번 로그인시 프로필 업데이트 
+      User.objects.filter(email=email).update(profile_img_url=profile_image_url)
       # user의 access token, refresh token을 담은 객체를 프론트에 반환 
       return JsonResponse(accept_json)
+    # 기존에 가입된 유저가 없으면 새로 가입
     except User.DoesNotExist:
-        # 기존에 가입된 유저가 없으면 새로 가입
         data = {'access_token': access_token, 'code': authentication_code}
         accept = requests.post(
             f"{service_base_url}users/kakao/login/finish/", data=data)
@@ -262,13 +240,13 @@ def kakao_login(request):
         # user의 access Token, refresh token을 json 형태로 프론트에 반환 
         accept_json = accept.json()
         accept_json.pop('user', None)
-        User.objects.filter(email=email).update(name=name, password="", sns_type="카카오톡")
+        User.objects.filter(email=email).update(name=name, password="", sns_type="카카오톡", profile_img_url=profile_image_url)
         return JsonResponse(accept_json)
     except ValueError as v:
         return JsonResponse({'ERROR_MESSAGE': v.args[0]}, status=status.HTTP_400_BAD_REQUEST) 
 
-#############################################################################  -  완료
 # 카카오 로그인/회원가입 API - Oauth 2.0 방식
+# User가 DB Table에 존재하면 알아서 로그인 처리해주고 존재하지 않으면 회원가입 처리해주는 클래스 
 class KakaoLogin(SocialLoginView):
     adapter_class = kakao_views.KakaoOAuth2Adapter
     client_class = OAuth2Client
