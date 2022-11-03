@@ -100,16 +100,6 @@ class CountryReadSerializer(serializers.ModelSerializer):
         model = Country
         fields = ('name',)
 
-class UserUpdateSerializer(WritableNestedModelSerializer): 
-    country = CountryRetrieveSerializer()
-    class Meta: 
-        model = User   
-        fields = ('nickname', 'age', 'is_male', 'location', 'country')
-    def validate(self, data):
-        if data['age'] < 19:
-           raise ValueError('A ForeaTown user must be 19 years old or above')
-        return data
-
 class UserReadSerializer(serializers.ModelSerializer):
     gender = serializers.SerializerMethodField()
     country = CountryReadSerializer() 
@@ -119,6 +109,16 @@ class UserReadSerializer(serializers.ModelSerializer):
     def get_gender(self, obj): 
         gender = 'male' if obj.is_male else 'female'
         return gender 
+
+class UserUpdateSerializer(WritableNestedModelSerializer): 
+    country = CountryRetrieveSerializer()
+    class Meta: 
+        model = User   
+        fields = ('nickname', 'age', 'is_male', 'location', 'country')
+    def validate(self, data):
+        if data['age'] < 19:
+           raise ValueError('A ForeaTown user must be 19 years old or above')
+        return data
 
 class CustomRegisterSerializer(RegisterSerializer):
     username = None

@@ -24,23 +24,15 @@ class GatherRoomCategory(models.Model):
     def __str__(self):
         return self.subject
 
-class GatherRoomCategoryImage(models.Model):
-    img_url = models.URLField(max_length=200, null=True)
-    gather_room_category = models.ForeignKey(GatherRoomCategory, on_delete=models.CASCADE)
-    class Meta:
-        db_table = 'gather_room_category_images'
-    def __str__(self):
-        return self.gather_room_category.name + ' - image'
-
 class GatherRoom(models.Model):
     subject = models.CharField(max_length=100)
     content = models.TextField(max_length=200)
-    link_url = models.URLField(max_length=200, null=True)
+    room_thema_id = models.PositiveSmallIntegerField(default=1, null=True)
     address = models.CharField(max_length=100, null=True) 
     is_online = models.BooleanField()
     avg_rating = models.FloatField(default=0.0)
     user_limit = models.PositiveSmallIntegerField(default=25)
-    male_ratio = models.FloatField(default=0.5)
+    male_ratio = models.FloatField(default=0.5, null=True)
     start_date = models.DateTimeField()
     end_date = models.DateTimeField()
     start_time = models.DateTimeField()
