@@ -1,3 +1,4 @@
 from django.contrib import admin
+from foreatown.models import GatherRoom
 
-# Register your models here.
+admin.site.register(GatherRoom)

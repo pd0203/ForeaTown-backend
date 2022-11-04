@@ -22,7 +22,7 @@ class GatherRoomCategory(models.Model):
     class Meta:
         db_table = 'gather_room_categories'
     def __str__(self):
-        return self.subject
+        return self.name
 
 class GatherRoom(models.Model):
     subject = models.CharField(max_length=100)
@@ -32,11 +32,8 @@ class GatherRoom(models.Model):
     is_online = models.BooleanField()
     avg_rating = models.FloatField(default=0.0)
     user_limit = models.PositiveSmallIntegerField(default=25)
-    male_ratio = models.FloatField(default=0.5, null=True)
-    start_date = models.DateTimeField()
-    end_date = models.DateTimeField()
-    start_time = models.DateTimeField()
-    end_time = models.DateTimeField()
+    start_datetime = models.DateTimeField()
+    end_datetime = models.DateTimeField()
     creator = models.ForeignKey('users.User', on_delete = models.CASCADE)
     gather_room_category = models.ForeignKey(GatherRoomCategory, on_delete=models.CASCADE)
     class Meta:

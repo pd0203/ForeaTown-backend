@@ -2,14 +2,9 @@ from rest_framework import serializers
 from foreatown.models import *
 from django.conf import settings
 from drf_writable_nested.serializers import WritableNestedModelSerializer
-import boto3, uuid 
-
-# AWS ACCESS FOR BOTO3
-AWS_ACCESS_KEY_ID = getattr(settings, 'AWS_ACCESS_KEY_ID')
-AWS_ACCESS_KEY_SECRET = getattr(settings, 'AWS_ACCESS_KEY_SECRET')
 
 class GatherRoomReadSerializer(serializers.ModelSerializer):
-    # gender = serializers.SerializerMethodField()
+    gender = serializers.SerializerMethodField()
     # country = CountryReadSerializer() 
     class Meta:
         model = GatherRoom
@@ -23,7 +18,7 @@ class GatherRoomRetrieveSerializer(serializers.ModelSerializer):
         model = GatherRoom
         fields = ['nickname', 'age', 'gender', 'location', 'profile_img_url', 'country']
 
-class GatherRoomCategoryRetrieveSerializer(serializers.ModelSerializer):
+class GatherRoomCategoryRetrieveSerializer(serializers.RelatedField):
     def to_representation(self, value):
         return value.name
     def to_internal_value(self, data):
@@ -37,48 +32,54 @@ class GatherRoomCategoryRetrieveSerializer(serializers.ModelSerializer):
 class GatherRoomImageCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = GatherRoomImage
-        fields = ['img_url',]
+        fields = ('img_url',)
 
 class GatherRoomOnlinePostSerializer(WritableNestedModelSerializer):
     gather_room_category = GatherRoomCategoryRetrieveSerializer()
-    gather_room_image = GatherRoomImageCreateSerializer()
+    # GatherRoom model에는 gather_room_image field는 없지만, GatherRoomImage model에 create()가 필요하기에 required=False로 처리
+    gather_room_image = GatherRoomImageCreateSerializer(many=True, required=False)
     class Meta: 
         model = GatherRoom   
-        fields = ('subject', 'content', 'room_thema_id', 'is_online', 'user_limit', 'male_ratio', 'start_datetime', 'end_datetime', 'creator', 'gather_room_category', 'gather_room_image')
+        fields = ('subject', 'content', 'room_thema_id', 'is_online', 'user_limit', 'start_datetime', 'end_datetime', 'creator', 'gather_room_category', 'gather_room_image')
+    def create(self, validated_data):
+        gather_room_img_url_list = validated_data.pop('gather_room_image')
+        gather_room = GatherRoom.objects.create(**validated_data)
+        for img_url in gather_room_img_url_list:
+            GatherRoomImage.objects.create(gather_room=gather_room, img_url=img_url)
+        return gather_room
     def validate(self, data):
-        if data['gather_room_category'] == 'Hiring':
-           raise ValueError('Hiring has to be on offline')
+        if data['user_limit'] < 2 or data['user_limit'] > 25: 
+           raise ValueError('User limit must be between 2 and 25')
         if data['end_datetime'] <= data['start_datetime']:
            raise ValueError('End datetime must come after start datetime')
-        if data['male_ratio'] < 0 or data['male_ratio'] > 1:
-           raise ValueError('Invalid male ratio. It must be between 0 and 1')
         ## 추가할 조건문 
         ## 1. 만약 creator가 겹치는 시간 대에 또다른 GatherRoom을 생성한 레코드가 있다면 raise ValueError
-        
         return data
 
 class GatherRoomOfflinePostSerializer(WritableNestedModelSerializer):
     gather_room_category = GatherRoomCategoryRetrieveSerializer()
-    gather_room_image = GatherRoomImageCreateSerializer()
+    # GatherRoom model에는 gather_room_image field는 없지만, GatherRoomImage model에 create()가 필요하기에 required=False로 처리
+    gather_room_image = GatherRoomImageCreateSerializer(many=True, required=False)
     class Meta: 
         model = GatherRoom   
-        fields = ('subject', 'content', 'address', 'is_online', 'user_limit', 'male_ratio', 'start_datetime', 'end_datetime', 'creator', 'gather_room_category', 'gather_room_image')
+        fields = ('subject', 'content', 'address', 'is_online', 'user_limit', 'start_datetime', 'end_datetime', 'creator', 'gather_room_category', 'gather_room_image')
+    def create(self, validated_data):
+        gather_room_img_url_list = validated_data.pop('gather_room_image')
+        gather_room = GatherRoom.objects.create(**validated_data)
+        for img_url in gather_room_img_url_list:
+            GatherRoomImage.objects.create(gather_room=gather_room, img_url=img_url)
+        return gather_room
     def validate(self, data):
-        if data['gather_room_category'] == 'Hiring':
-           data['male_ratio'] = None 
+        if data['address'] == '': 
+           raise ValueError('Address must be specified for offline event')
+        if data['user_limit'] < 2: 
+           raise ValueError('User limit must be more than or equal to 2')
         if data['end_datetime'] <= data['start_datetime']:
            raise ValueError('End datetime must come after start datetime')  
         ## 추가할 조건문 
         ## 1. 만약 creator가 겹치는 시간 대에 또다른 GatherRoom을 생성한 레코드가 있다면 raise ValueError
-        
         return data
 
-# class PostCreateSerializer(WritableNestedModelSerializer):
-#     postfile = PostFileUploadSerializer(required=False)
-#     class Meta:
-#         model = Post
-#         fields = ("id", "category", "creator", "subject", "content",
-#                   "created_at", "postfile")
 class GatherRoomUpdateSerializer(WritableNestedModelSerializer):
     class Meta: 
         model = GatherRoom   
