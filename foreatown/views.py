@@ -40,21 +40,30 @@ class S3Client:
             return f'https://{self.bucket_name}.s3.ap-northeast-2.amazonaws.com/{file_id}'
         except:
             return None
+      # def delete(self, file): 
+      #    try: 
+      #       file_id    = 'free' + str(uuid.uuid1()).replace('-', '')
+      #       extra_args = { 'ContentType' : file.content_type }
+      #       self.s3_client.upload_fileobj(
+      #               file,
+      #               self.bucket_name,
+      #               file_id,
+      #               ExtraArgs = extra_args
+      #       )
+      #       return f'https://{self.bucket_name}.s3.ap-northeast-2.amazonaws.com/{file_id}'
+      #   except:
+      #       return None
+
 
 class GatherRoomAPI(ModelViewSet):
     queryset = GatherRoom.objects.all()
     permission_classes = [IsAuthenticatedOrReadOnly]    
     s3_client = S3Client(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_S3_BUCKET_NAME)
-    def get_queryset(self):
-        queryset = GatherRoom.objects.all() 
-        if self.kwargs.get('gather_room_category_id'): 
-           queryset = GatherRoom.objects.filter(gather_room_category=self.kwargs.get('gather_room_category'))
-        return queryset 
     def get_object(self):
-        if self.action == 'partial_update':
-           return get_object_or_404(self.queryset, creator=self.request.user)
+        if self.action == 'created_list':
+           return get_object_or_404(self.queryset, creator=self.request.user) 
     def get_serializer_class(self):
-        if self.action == 'list':
+        if self.action == 'list' or self.action == 'created_list':
            return GatherRoomReadSerializer       
         if self.action == 'retrieve':
            return GatherRoomRetrieveSerializer
@@ -63,9 +72,12 @@ class GatherRoomAPI(ModelViewSet):
             return GatherRoomOfflinePostSerializer
         if self.action == 'create' and self.request.data['is_online']:
            return GatherRoomOnlinePostSerializer
-        if self.action == 'partial_update':
-           return GatherRoomUpdateSerializer 
-
+        if ((self.action == 'partial_update' and not self.request.data['is_online']) or  
+            self.request.data['gather_room_category'] == 'Hiring'):
+            return GatherRoomOfflineUpdateSerializer
+        if self.action == 'partial_update' and self.request.data['is_online']:
+           return GatherRoomOnlineUpdateSerializer 
+    ########################################################################################## - 완성
     # 1. GatherRoomListWithFilteringAPI()
     def list(self, request, *args, **kwargs):
         try: 
@@ -73,6 +85,15 @@ class GatherRoomAPI(ModelViewSet):
            gather_room_instance = GatherRoom.objects.all()
            if gather_room_category: 
               gather_room_instance = GatherRoom.objects.filter(gather_room_category=kwargs.get('gather_room_category_id'))
+           serializer = self.get_serializer(gather_room_instance, many=True)
+           return Response(serializer.data)
+        except Exception as e:
+           return Response({'ERROR_MESSAGE': e.args}, status=status.HTTP_400_BAD_REQUEST)
+    ########################################################################################## - 완성
+    # 2. GatherRoomCreatedListAPI() 
+    def created_list(self, request):
+        try: 
+           gather_room_instance = GatherRoom.objects.all()
            serializer = self.get_serializer(gather_room_instance, many=True)
            return Response(serializer.data)
         except Exception as e:
@@ -93,19 +114,25 @@ class GatherRoomAPI(ModelViewSet):
     # GatherRoom 포스팅할 떄 사용하는 Method이며, 사진 파일이 첨부되어 있으면 S3에 저장후 해당 파일 URL을 DB에 저장
     def create(self, request, *args, **kwargs):
         try:
-            # convert formdata to json format 
-            category_obj = {'name': request.data['gather_room_category']} 
+            # convert formdata to json format  
             data = {
                'subject': request.data['subject'],
                'content': request.data['content'],
                # 'room_thema_id': int(request.data['room_thema_id']),
+               'address': request.data['address'],
                'is_online': True if request.data['is_online'] == 'True' else False, 
                'user_limit': int(request.data['user_limit']),
                'date_time': datetime.strptime(request.data['date_time'], '%Y-%m-%d %H:%M:%S'),
                'creator': self.request.user.id,
-               'gather_room_category': category_obj,
+               'gather_room_category': {'name': request.data['gather_room_category']},
                'gather_room_images': self.retrieve_gather_room_image_url_list(request.FILES, 'gather_room_images')
             }
+            # request.data['is_online'] = True if request.data['is_online'] == 'True' else False
+            # request.data['user_limit'] = int(request.data['user_limit']) 
+            # request.data['date_time'] = datetime.strptime(request.data['date_time'], '%Y-%m-%d %H:%M:%S')
+            # request.data['creator'] = self.request.user.id 
+            # request.data['gather_room_category'] = {'name': request.data['gather_room_category']} 
+            # request.data['gather_room_images'] = self.retrieve_gather_room_image_url_list(request.FILES, 'gather_room_images')
             # Validate the data through serializer
             serializer = self.get_serializer(data=data)
             serializer.is_valid(raise_exception=True)
@@ -114,6 +141,36 @@ class GatherRoomAPI(ModelViewSet):
             return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
         except Exception as e:
             return Response({'ERROR_MESSAGE': e.args}, status=status.HTTP_400_BAD_REQUEST) 
+    ########################################################################################## - 완성
+    # 4. GatherRoomUpdateAPI()
+    def partial_update(self, request, *args, **kwargs): 
+        try :
+           partial = kwargs.pop('partial', False)
+           queryset = self.get_queryset()
+           gather_room_instance = get_object_or_404(queryset, creator=self.request.user, id=kwargs.get('id'))
+           # convert formdata to json format 
+           data = {
+              'subject': request.data['subject'],
+              'content': request.data['content'],
+              # 'room_thema_id': int(request.data['room_thema_id']),
+              'address': request.data['address'],
+              'is_online': True if request.data['is_online'] == 'True' else False, 
+              'user_limit': int(request.data['user_limit']),
+              'date_time': datetime.strptime(request.data['date_time'], '%Y-%m-%d %H:%M:%S'),
+              'creator': self.request.user.id,
+              'gather_room_category': {'name': request.data['gather_room_category']},
+              'gather_room_images': self.retrieve_gather_room_image_url_list(request.FILES, 'gather_room_images')  
+            }
+           serializer = self.get_serializer(gather_room_instance, data=data, partial=partial)
+           serializer.is_valid(raise_exception=True)
+           self.perform_update(serializer)
+           if getattr(gather_room_instance, '_prefetched_objects_cache', None):
+               # If 'prefetch_related' has been applied to a queryset, we need to
+               # forcibly invalidate the prefetch cache on the instance.
+               gather_room_instance._prefetched_objects_cache = {}
+           return Response(serializer.data)
+        except Exception as e:
+           return Response({'ERROR_MESSAGE': e.args}, status=status.HTTP_400_BAD_REQUEST)
     # Upload image files into AWS S3 storage and retrieve the list of S3 image file url
     def retrieve_gather_room_image_url_list(self, files, files_key):  
         images_list = [] 
@@ -122,9 +179,7 @@ class GatherRoomAPI(ModelViewSet):
             image_obj['img_url'] = self.s3_client.upload(image_file)
             images_list.append(image_obj)
         return images_list 
-
-    # 4. GatherRoomPatchAPI()
-    # def partial_update(self, request, *args, **kwargs): 
+    
 
 # class ReservationsAPI(ModelViewSet):
 #     permission_classes = [IsAuthenticated]

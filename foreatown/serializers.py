@@ -1,3 +1,4 @@
+from queue import Empty
 from rest_framework import serializers
 from foreatown.models import *
 from django.conf import settings
@@ -63,12 +64,12 @@ class GatherRoomOnlinePostSerializer(WritableNestedModelSerializer):
     class Meta: 
         model = GatherRoom   
         fields = ('subject', 'content', 'is_online', 'user_limit', 'date_time', 'creator', 'gather_room_category', 'gather_room_images')
-    def create(self, validated_data):
-        gather_room_img_url_list = validated_data.pop('gather_room_images')
-        gather_room = GatherRoom.objects.create(**validated_data)
-        for img_url in gather_room_img_url_list:
-            GatherRoomImage.objects.create(gather_room=gather_room, img_url=img_url['img_url'])
-        return gather_room
+    # def create(self, validated_data):
+    #     gather_room_img_url_list = validated_data.pop('gather_room_images')
+    #     gather_room = GatherRoom.objects.create(**validated_data)
+    #     for img_url in gather_room_img_url_list:
+    #         GatherRoomImage.objects.create(gather_room=gather_room, img_url=img_url['img_url'])
+    #     return gather_room
     def validate(self, data):
         if data['user_limit'] < 2 or data['user_limit'] > 25: 
            raise ValueError('User limit must be between 2 and 25')
@@ -83,12 +84,6 @@ class GatherRoomOfflinePostSerializer(WritableNestedModelSerializer):
     class Meta: 
         model = GatherRoom   
         fields = ('subject', 'content', 'address', 'is_online', 'user_limit', 'date_time', 'creator', 'gather_room_category', 'gather_room_images')
-    def create(self, validated_data):
-        gather_room_img_url_list = validated_data.pop('gather_room_images')
-        gather_room = GatherRoom.objects.create(**validated_data)
-        for img_url in gather_room_img_url_list:
-            GatherRoomImage.objects.create(gather_room=gather_room, img_url=img_url['img_url'])
-        return gather_room
     def validate(self, data):
         if data['address'] == '': 
            raise ValueError('Address must be specified for offline event')
@@ -107,11 +102,30 @@ class GatherRoomRetrieveSerializer(serializers.ModelSerializer):
         model = GatherRoom   
         fields = ('subject', 'content', 'is_online', 'user_limit', 'date_time', 'creator', 'participants', 'gather_room_category', 'gather_room_images')
 
-class GatherRoomUpdateSerializer(WritableNestedModelSerializer):
+class GatherRoomOfflineUpdateSerializer(WritableNestedModelSerializer):
+    gather_room_category = GatherRoomCategoryRetrieveSerializer()
+    gather_room_images = GatherRoomImageSerializer(many=True, required=False)
     class Meta: 
         model = GatherRoom   
-        fields = ('nickname', 'age', 'is_male', 'location', 'country')
+        fields = ('subject', 'content', 'address', 'user_limit', 'date_time', 'gather_room_category', 'gather_room_images')
     def validate(self, data):
-        if data['age'] < 19:
-           raise ValueError('A ForeaTown user must be 19 years old or above')
+        if data['address'] == '': 
+           raise ValueError('Address must be specified for offline event')
+        if data['user_limit'] < 2: 
+           raise ValueError('User limit must be more than or equal to 2')
+        ## 추가할 조건문 
+        ## 1. 만약 creator가 겹치는 시간 대에 또다른 GatherRoom을 생성한 레코드가 있다면 raise ValueError
+        return data
+
+class GatherRoomOnlineUpdateSerializer(WritableNestedModelSerializer):
+    gather_room_category = GatherRoomCategoryRetrieveSerializer()
+    gather_room_images = GatherRoomImageSerializer(many=True, required=False)
+    class Meta: 
+        model = GatherRoom   
+        fields = ('subject', 'content', 'user_limit', 'date_time', 'gather_room_category', 'gather_room_images')
+    def validate(self, data):
+        if data['user_limit'] < 2 or data['user_limit'] > 25: 
+           raise ValueError('User limit must be between 2 and 25')
+        ## 추가할 조건문 
+        ## 1. 만약 creator가 겹치는 시간 대에 또다른 GatherRoom을 생성한 레코드가 있다면 raise ValueError
         return data
