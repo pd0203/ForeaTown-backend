@@ -2,10 +2,10 @@ from users.models import *
 from users.serializers import *
 from foreatown.models import *
 from foreatown.serializers import *
-from rest_framework import status
+from rest_framework import status, generics
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
 from django.shortcuts import get_object_or_404
 from django.conf import settings
 from datetime import datetime
@@ -42,11 +42,11 @@ class S3Client:
             return None
 
 class GatherRoomAPI(ModelViewSet):
-    permission_classes = [IsAuthenticated]
-    queryset = GatherRoom.objects.all()    
+    queryset = GatherRoom.objects.all()
+    permission_classes = [IsAuthenticatedOrReadOnly]    
     s3_client = S3Client(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_S3_BUCKET_NAME)
-    def get_object(self): 
-        if self.action == 'retrieve' or self.action == 'partial_update':
+    def get_object(self):
+        if self.action == 'partial_update':
            return get_object_or_404(self.queryset, creator=self.request.user)
         if self.action == 'create' or self.action == 'list':
            return get_object_or_404(self.get_queryset())
@@ -54,7 +54,8 @@ class GatherRoomAPI(ModelViewSet):
         if self.action == 'list':
            return GatherRoomReadSerializer       
         if self.action == 'retrieve':
-           return GatherRoomRetrieveSerializer 
+           return GatherRoomDetailReadSerializer
+         #   return GatherRoomRetrieveSerializer 
         if ((self.action == 'create' and not self.request.data['is_online']) or  
             self.request.data['gather_room_category'] == 'Hiring'):
             return GatherRoomOfflinePostSerializer
@@ -64,13 +65,33 @@ class GatherRoomAPI(ModelViewSet):
            return GatherRoomUpdateSerializer 
 
     # 1. GatherRoomListWithFilteringAPI()
-    # def list(self, request, *args, **kwargs):
-    
-    # 2. GatherRoomRetrieveAPI()
-    # def retrieve(self, request, *args, **kwargs):
-    
-    # 3. GatherRoomPostAPI()
-    # GatherRoom 포스팅할 떄 사용하는 Class이며, 사진 파일이 첨부되어 있으면 S3에 저장후 해당 파일 URL을 DB에 저장
+      # link_url을 없앤대신 category와 room_thema_id 정보 기반 자동으로 게더타운 링크를 보내주는 api 구현 필요
+      # http://localhost:8000/gather-room?category=meetup 
+    def list(self, request, *args, **kwargs):
+        try: 
+           queryset = self.filter_queryset(self.get_queryset())
+           page = self.paginate_queryset(queryset)
+           if page is not None:
+              serializer = self.get_serializer(page, many=True)
+              return self.get_paginated_response(serializer.data)
+           serializer = self.get_serializer(queryset, many=True)
+           return Response(serializer.data)
+        except Exception as e:
+           return Response({'ERROR_MESSAGE': e.args}, status=status.HTTP_400_BAD_REQUEST)
+    ########################################################################################## - 완성 
+    # GatherRoomRetrieveAPI()
+    # GatherRoom 디테일 페이지 보여줄 때 사용하는 Method
+    def retrieve(self, request, *args, **kwargs):
+        try:
+           queryset = GatherRoom.objects.all()
+           gather_room_instance = get_object_or_404(queryset, id=kwargs.get('id'))
+           serializer = self.get_serializer(gather_room_instance)
+           return Response(serializer.data)
+        except Exception as e:
+           return Response({'ERROR_MESSAGE': e.args}, status=status.HTTP_400_BAD_REQUEST)
+    ########################################################################################## - 완성
+    # GatherRoomPostAPI()
+    # GatherRoom 포스팅할 떄 사용하는 Method이며, 사진 파일이 첨부되어 있으면 S3에 저장후 해당 파일 URL을 DB에 저장
     def create(self, request, *args, **kwargs):
         try:
             # convert formdata to json format 
@@ -78,14 +99,13 @@ class GatherRoomAPI(ModelViewSet):
             data = {
                'subject': request.data['subject'],
                'content': request.data['content'],
-               'room_thema_id': int(request.data['room_thema_id']),
+               # 'room_thema_id': int(request.data['room_thema_id']),
                'is_online': True if request.data['is_online'] == 'True' else False, 
                'user_limit': int(request.data['user_limit']),
-               'start_datetime': datetime.strptime(request.data['start_datetime'], '%Y-%m-%d %H:%M:%S'),
-               'end_datetime': datetime.strptime(request.data['end_datetime'], '%Y-%m-%d %H:%M:%S'),
+               'date_time': datetime.strptime(request.data['date_time'], '%Y-%m-%d %H:%M:%S'),
                'creator': self.request.user.id,
                'gather_room_category': category_obj,
-               'gather_room_image': self.gather_room_image_create(request.FILES, 'gather_room_image')
+               'gather_room_images': self.retrieve_gather_room_image_url_list(request.FILES, 'gather_room_images')
             }
             # Validate the data through serializer
             serializer = self.get_serializer(data=data)
@@ -96,16 +116,16 @@ class GatherRoomAPI(ModelViewSet):
         except Exception as e:
             return Response({'ERROR_MESSAGE': e.args}, status=status.HTTP_400_BAD_REQUEST) 
     # Upload image files into AWS S3 storage and retrieve the list of S3 image file url
-    def gather_room_image_create(self, files, files_key):  
-      images_list = [] 
-      for image_file in files.getlist(files_key):
-          image_obj = {}
-          image_obj['img_url'] = self.s3_client.upload(image_file)
-          images_list.append(image_obj)
-      return images_list 
+    def retrieve_gather_room_image_url_list(self, files, files_key):  
+        images_list = [] 
+        for image_file in files.getlist(files_key):
+            image_obj = {}
+            image_obj['img_url'] = self.s3_client.upload(image_file)
+            images_list.append(image_obj)
+        return images_list 
+
     # 4. GatherRoomPatchAPI()
     # def partial_update(self, request, *args, **kwargs): 
-
 
 # class ReservationsAPI(ModelViewSet):
 #     permission_classes = [IsAuthenticated]
