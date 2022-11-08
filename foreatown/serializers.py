@@ -28,18 +28,12 @@ from users.serializers import CreatorSerializer, ParticipantSerializer
       # ]
 
 class GatherRoomReadSerializer(serializers.ModelSerializer):
-    # user_participation = serializers.SerializerMethodField()
+    participants_count = serializers.SerializerMethodField()
     class Meta:
         model = GatherRoom
-        fields = ['id', 'subject', 'address', 'is_online', 'user_limit', 'user_participation', 'date_time', 'gather_room_category']
-    # def get_user_participation(self, obj): 
-    #     # gender = 'male' if obj.is_male else 'female'
-    #     # return gender
-
-class GatherRoomRetrieveSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = GatherRoom
-        fields = ['nickname', 'age', 'gender', 'location', 'profile_img_url', 'country']
+        fields = ['id', 'subject', 'address', 'is_online', 'user_limit', 'participants_count', 'date_time', 'gather_room_category'] 
+    def get_participants_count(self, obj): 
+        return UserGatherRoomReservation.objects.filter(gather_room_id=obj.id).count()
 
 class GatherRoomCategoryRetrieveSerializer(serializers.RelatedField):
     def to_representation(self, value):
@@ -71,7 +65,6 @@ class GatherRoomOnlinePostSerializer(WritableNestedModelSerializer):
         fields = ('subject', 'content', 'is_online', 'user_limit', 'date_time', 'creator', 'gather_room_category', 'gather_room_images')
     def create(self, validated_data):
         gather_room_img_url_list = validated_data.pop('gather_room_images')
-            # data['gather_room_images'][0]['img_url']
         gather_room = GatherRoom.objects.create(**validated_data)
         for img_url in gather_room_img_url_list:
             GatherRoomImage.objects.create(gather_room=gather_room, img_url=img_url['img_url'])
@@ -94,7 +87,7 @@ class GatherRoomOfflinePostSerializer(WritableNestedModelSerializer):
         gather_room_img_url_list = validated_data.pop('gather_room_images')
         gather_room = GatherRoom.objects.create(**validated_data)
         for img_url in gather_room_img_url_list:
-            GatherRoomImage.objects.create(gather_room=gather_room, img_url=img_url)
+            GatherRoomImage.objects.create(gather_room=gather_room, img_url=img_url['img_url'])
         return gather_room
     def validate(self, data):
         if data['address'] == '': 
@@ -105,7 +98,7 @@ class GatherRoomOfflinePostSerializer(WritableNestedModelSerializer):
         ## 1. 만약 creator가 겹치는 시간 대에 또다른 GatherRoom을 생성한 레코드가 있다면 raise ValueError
         return data
 
-class GatherRoomDetailReadSerializer(serializers.ModelSerializer):
+class GatherRoomRetrieveSerializer(serializers.ModelSerializer):
     creator = CreatorSerializer(read_only=True)
     participants = ParticipantSerializer(many=True, read_only=True)
     gather_room_category = GatherRoomCategorySerializer()

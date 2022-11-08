@@ -5,8 +5,6 @@ from foreatown.views import GatherRoomAPI
 urlpatterns = [
     # 아무 유저 접근 가능한 내가 생성한 gather-room 조회 및 나만 접근가능한 내가 생성한 gather-room 수정용 
     path("gather-room/<int:id>", GatherRoomAPI.as_view({"get": "retrieve", "patch": "partial_update"})),
-    # 아무 유저 접근 가능한 gather-room main page 조회용 
-    path("gather-room/list/<int:gather_room_category_id>", GatherRoomAPI.as_view({"get": "list"})),
     # 나만 접근 가능한 내가 생성한 gather-room list 조회용
     path("gather-room/list/creation", GatherRoomAPI.as_view({"get": "creation_list"})), 
     # 나만 접근 가능한 내가 예약한 gather-room list 조회용
@@ -16,6 +14,9 @@ urlpatterns = [
     # 1. 아무 유저 접근 가능한 내가 생성한 gather-room 조회 
     # 2. 아무 유저 접근 가능한 gather-room detail page 조회용 
     path("gather-room/create", GatherRoomAPI.as_view({"post": "create"})),
+    # 3. 아무 유저 접근 가능한 gather-room main page 조회용 
+    path("gather-room/list/", GatherRoomAPI.as_view({"get": "list"})),
+    path("gather-room/list/<int:gather_room_category_id>", GatherRoomAPI.as_view({"get": "list"})),
 ]
 
 # ForeaTown

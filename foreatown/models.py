@@ -33,7 +33,7 @@ class GatherRoom(models.Model):
     user_limit = models.PositiveSmallIntegerField(default=25)
     date_time = models.DateTimeField(null=True)
     creator = models.ForeignKey('users.User', on_delete = models.CASCADE)
-    participants = models.ManyToManyField('users.User', related_name='gather_rooms', through='foreatown.UserGatherRoomReservation')
+    participants = models.ManyToManyField('users.User', related_name='participating_gather_rooms', through='foreatown.UserGatherRoomReservation')
     gather_room_category = models.ForeignKey(GatherRoomCategory, on_delete=models.CASCADE)
     class Meta:
         db_table = 'gather_rooms'

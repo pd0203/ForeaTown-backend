@@ -45,17 +45,19 @@ class GatherRoomAPI(ModelViewSet):
     queryset = GatherRoom.objects.all()
     permission_classes = [IsAuthenticatedOrReadOnly]    
     s3_client = S3Client(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_S3_BUCKET_NAME)
+    def get_queryset(self):
+        queryset = GatherRoom.objects.all() 
+        if self.kwargs.get('gather_room_category_id'): 
+           queryset = GatherRoom.objects.filter(gather_room_category=self.kwargs.get('gather_room_category'))
+        return queryset 
     def get_object(self):
         if self.action == 'partial_update':
            return get_object_or_404(self.queryset, creator=self.request.user)
-        if self.action == 'create' or self.action == 'list':
-           return get_object_or_404(self.get_queryset())
     def get_serializer_class(self):
         if self.action == 'list':
            return GatherRoomReadSerializer       
         if self.action == 'retrieve':
-           return GatherRoomDetailReadSerializer
-         #   return GatherRoomRetrieveSerializer 
+           return GatherRoomRetrieveSerializer
         if ((self.action == 'create' and not self.request.data['is_online']) or  
             self.request.data['gather_room_category'] == 'Hiring'):
             return GatherRoomOfflinePostSerializer
@@ -65,16 +67,13 @@ class GatherRoomAPI(ModelViewSet):
            return GatherRoomUpdateSerializer 
 
     # 1. GatherRoomListWithFilteringAPI()
-      # link_url을 없앤대신 category와 room_thema_id 정보 기반 자동으로 게더타운 링크를 보내주는 api 구현 필요
-      # http://localhost:8000/gather-room?category=meetup 
     def list(self, request, *args, **kwargs):
         try: 
-           queryset = self.filter_queryset(self.get_queryset())
-           page = self.paginate_queryset(queryset)
-           if page is not None:
-              serializer = self.get_serializer(page, many=True)
-              return self.get_paginated_response(serializer.data)
-           serializer = self.get_serializer(queryset, many=True)
+           gather_room_category = kwargs.get('gather_room_category_id') 
+           gather_room_instance = GatherRoom.objects.all()
+           if gather_room_category: 
+              gather_room_instance = GatherRoom.objects.filter(gather_room_category=kwargs.get('gather_room_category_id'))
+           serializer = self.get_serializer(gather_room_instance, many=True)
            return Response(serializer.data)
         except Exception as e:
            return Response({'ERROR_MESSAGE': e.args}, status=status.HTTP_400_BAD_REQUEST)
@@ -83,7 +82,7 @@ class GatherRoomAPI(ModelViewSet):
     # GatherRoom 디테일 페이지 보여줄 때 사용하는 Method
     def retrieve(self, request, *args, **kwargs):
         try:
-           queryset = GatherRoom.objects.all()
+           queryset = self.get_queryset()
            gather_room_instance = get_object_or_404(queryset, id=kwargs.get('id'))
            serializer = self.get_serializer(gather_room_instance)
            return Response(serializer.data)
