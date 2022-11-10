@@ -40,6 +40,8 @@ class S3Client:
             return f'https://{self.bucket_name}.s3.ap-northeast-2.amazonaws.com/{file_id}'
         except:
             return None
+      # uuid로 file_id가 설정되어 있어 해당 file_id를 찾아 수정하려면 프론트에서 해당 아이디를 보내줘 여기서 파일
+      # 아이디를 똑같이한채로 수정하거나 삭제하고 재 생성하는 법이 있다 
       # def delete(self, file): 
       #    try: 
       #       file_id    = 'free' + str(uuid.uuid1()).replace('-', '')
@@ -69,9 +71,9 @@ class GatherRoomAPI(ModelViewSet):
            return GatherRoomRetrieveSerializer
         if ((self.action == 'create' and not self.request.data['is_online']) or  
             self.request.data['gather_room_category'] == 'Hiring'):
-            return GatherRoomOfflinePostSerializer
+            return GatherRoomOfflineCreateSerializer
         if self.action == 'create' and self.request.data['is_online']:
-           return GatherRoomOnlinePostSerializer
+           return GatherRoomOnlineCreateSerializer
         if ((self.action == 'partial_update' and not self.request.data['is_online']) or  
             self.request.data['gather_room_category'] == 'Hiring'):
             return GatherRoomOfflineUpdateSerializer
@@ -127,12 +129,6 @@ class GatherRoomAPI(ModelViewSet):
                'gather_room_category': {'name': request.data['gather_room_category']},
                'gather_room_images': self.retrieve_gather_room_image_url_list(request.FILES, 'gather_room_images')
             }
-            # request.data['is_online'] = True if request.data['is_online'] == 'True' else False
-            # request.data['user_limit'] = int(request.data['user_limit']) 
-            # request.data['date_time'] = datetime.strptime(request.data['date_time'], '%Y-%m-%d %H:%M:%S')
-            # request.data['creator'] = self.request.user.id 
-            # request.data['gather_room_category'] = {'name': request.data['gather_room_category']} 
-            # request.data['gather_room_images'] = self.retrieve_gather_room_image_url_list(request.FILES, 'gather_room_images')
             # Validate the data through serializer
             serializer = self.get_serializer(data=data)
             serializer.is_valid(raise_exception=True)
@@ -179,34 +175,60 @@ class GatherRoomAPI(ModelViewSet):
             image_obj['img_url'] = self.s3_client.upload(image_file)
             images_list.append(image_obj)
         return images_list 
+    # Upload image files into AWS S3 storage and retrieve the list of S3 image file url
     
 
-# class ReservationsAPI(ModelViewSet):
-#     permission_classes = [IsAuthenticated]
-#     queryset = GatherRoom.objects.all()   
-#     def get_object(self): 
-        # queryset = self.get_queryset()
-        # if self.action == 'partial_update' or self.action == 'retrieve':
-        #    return get_object_or_404(queryset, id=self.request.user.id)
-        # return get_object_or_404(self.get_queryset()) 
-    # def get_serializer_class(self):
-    #     if self.action == 'create':
-    #        return ReservationPostSerializer
-    #     if self.action == 'list':
-    #        return ReservationReadSerializer       
-    #     if self.action == 'delete': 
-    #        return ReservationDeleteSerializer  
-    # queryset = 
-    # serializer_class = 
-
-    # 4. ReservationPostAPI()
-    # def post(self, request, *args, **kwargs):
-
-    # 5. ReservationListAPI() 
-    # def list(self, request, *args, **kwargs):
-
-    # 6. ReservationDeleteAPI()
-    # def delete(self, request, *args, **kwargs): 
+class GatherRoomReservationAPI(ModelViewSet):
+    permission_classes = [IsAuthenticated]
+    queryset = UserGatherRoomReservation.objects.all()   
+    def get_object(self): 
+        queryset = self.get_queryset()
+        return get_object_or_404(queryset, id=self.request.user.id)
+    def get_serializer_class(self):
+        if self.action == 'create':
+           return GatherRoomReservationSerializer
+        if self.action == 'list':
+           return GatherRoomReservationSerializer       
+   #      if self.action == 'destroy': 
+   #         return ReservationDeleteSerializer  
+    #  ReservationPostAPI()
+    def create(self, request, *args, **kwargs):
+        try:
+           # convert formdata to json format  
+           data = {
+              'user': self.request.user.id, 
+              'gather_room': request.data['gather_room_id']
+           }
+           # Validate the data through serializer
+           serializer = self.get_serializer(data=data)
+           serializer.is_valid(raise_exception=True)
+           self.perform_create(serializer)
+           headers = self.get_success_headers(serializer.data)
+           return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        except Exception as e:
+           return Response({'ERROR_MESSAGE': e.args}, status=status.HTTP_400_BAD_REQUEST)
+    #  ReservationListAPI() 
+    def list(self, request, *args, **kwargs):
+        try: 
+           gather_room_reservation_instance = UserGatherRoomReservation.objects.filter(user=self.request.user.id)
+           serializer = self.get_serializer(gather_room_reservation_instance, many=True)
+           return Response(serializer.data)
+        except Exception as e:
+           return Response({'ERROR_MESSAGE': e.args}, status=status.HTTP_400_BAD_REQUEST)
+    def destroy(self, request, *args, **kwargs):
+        try: 
+           gather_room_reservation_instance = UserGatherRoomReservation.objects.filter(user=self.request.user.id)
+           serializer = self.get_serializer(gather_room_reservation_instance, many=True)
+           return Response(serializer.data)
+        except Exception as e:
+           return Response({'ERROR_MESSAGE': e.args}, status=status.HTTP_400_BAD_REQUEST)
+    # def retrieve_gather_room_id_list(self, reservation_list): 
+    #     reserved_gather_room_list = []
+    #     for reservation in reservation_list: 
+    #         reserved_gather_room_list.append(reservation['gather_room'])
+    #     return reserved_gather_room_list
+    #  ReservationDeleteAPI()
+    #def destroy(self, request, *args, **kwargs): 
 
 
 

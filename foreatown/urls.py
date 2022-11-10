@@ -1,6 +1,5 @@
 from django.urls import path, include
-# from foreatown.views import GatherRoomAPI, GatherRoomDetailAPI, GatherRoomReservationAPI 
-from foreatown.views import GatherRoomAPI
+from foreatown.views import GatherRoomAPI, GatherRoomReservationAPI
 
 urlpatterns = [
     path("gather-room/create", GatherRoomAPI.as_view({"post": "create"})),
@@ -8,7 +7,10 @@ urlpatterns = [
     path("gather-room/list/creation", GatherRoomAPI.as_view({"get": "created_list"})), 
     path("gather-room/list/<int:gather_room_category_id>", GatherRoomAPI.as_view({"get": "list"})),   
     path("gather-room/<int:id>", GatherRoomAPI.as_view({"get": "retrieve", "patch": "partial_update"})),
-     # path("gather-room/list/reservation", GatherRoomReservationAPI.as_view({"get": "list"})),
+    ####################################################################################################
+    path("gather-room/reservation/create", GatherRoomReservationAPI.as_view({"post": "create"})),
+    path("gather-room/reservation/list", GatherRoomReservationAPI.as_view({"get": "list"})),
+    path("gather-room/reservation/delete", GatherRoomReservationAPI.as_view({"delete": "destroy"})),
 ]
 
 # ForeaTown
