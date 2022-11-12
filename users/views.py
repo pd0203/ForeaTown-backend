@@ -2,7 +2,6 @@ from users.models import *
 from users.serializers import *
 from nofilter.serializers import *
 from rest_framework import generics, status
-from rest_framework.exceptions import APIException
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -70,7 +69,7 @@ def status_validator(func):
     return wrapper
 
 
-# 셀티 이벤트 및 확장버전용으로 유저가 고등학교 입력시 자동완성으로 보여줄 리스트를 반환하는 API  
+# 유저 추가정보 입력 페이지 또는 mypage에서 정보 수정할 때 필요한 국가명 자동완성 리스트 API  
 class CountryListAPI(ModelViewSet):
     serializer_class = CountryReadSerializer
     def get_queryset(self): 
@@ -81,11 +80,10 @@ class CountryListAPI(ModelViewSet):
            queryset = queryset.filter(name__icontains=country)
         return queryset 
 
-# Mypage에 필요한 MyInfo API
-class MyInfoAPI(ModelViewSet):
+# Mypage에 필요한 MyUserInfo API
+class MyUserInfoAPI(ModelViewSet):
     permission_classes = [IsAuthenticated]
-    def get_queryset(self): 
-        return User.objects.all()   
+    queryset = User.objects.all()   
     def get_object(self): 
         queryset = self.get_queryset()
         if self.action == 'partial_update' or self.action == 'retrieve':
@@ -115,7 +113,7 @@ class MyInfoAPI(ModelViewSet):
             return Response({'ERROR_MESSAGE': v.args}, status=status.HTTP_400_BAD_REQUEST) 
 
 # User 회원가입시 입력된 추가정보를 받아 User 데이터를 수정하는 API
-class UserInfoUpdateAPI(generics.UpdateAPIView):
+class AdditionalInfoPatchAPI(generics.UpdateAPIView):
     permission_classes = [IsAuthenticated]
     queryset = User.objects.all()
     serializer_class = UserUpdateSerializer

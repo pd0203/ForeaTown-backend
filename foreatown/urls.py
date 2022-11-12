@@ -1,16 +1,15 @@
 from django.urls import path, include
-# from users.views import KakaoLogin, kakao_login, UserAPI, LoginAPI, SignupAPI, HighschoolRead, HighSchoolView, MyPageView
-# from dreamer.views import 
+from foreatown.views import GatherRoomAPI, GatherRoomReservationAPI, GatherRoomReviewAPI 
 
 urlpatterns = [
-    # 앞으로 만들 API
-    # path("class/list", ClassAPI.as_view({"get": "class_list"})),
-    # path("class/<int:pk>", ClassAPI.as_view({"get": "retrieve", "patch": "partial_update"})),
-    # path("class/search", ClassAPI.as_view({"get": "class_search"}))
-
-    # 이전 노필터 API 
-    # path('school/list/', HighschoolRead.as_view()),
-    # path("school/", HighSchoolView.as_view({"get": "school_all_list"})),
-    # path("school/<int:pk>", HighSchoolView.as_view({"get": "retrieve", "patch": "partial_update"})),
-    # path("school/search/", HighSchoolView.as_view({"get": "school_search"}))
+    path("gather-room", GatherRoomAPI.as_view({"post": "create"})),
+    path("gather-room/<int:id>", GatherRoomAPI.as_view({"get": "retrieve", "patch": "partial_update", "delete": "destroy"})),
+    path("gather-room/list", GatherRoomAPI.as_view({"get": "list"})),
+    path("gather-room/list/<int:gather_room_category_id>", GatherRoomAPI.as_view({"get": "list"})), 
+    path("gather-room/mylist", GatherRoomAPI.as_view({"get": "my_list"})),   
+    path("gather-room/reservation", GatherRoomReservationAPI.as_view({"post": "create"})),
+    path("gather-room/reservation/list", GatherRoomReservationAPI.as_view({"get": "list"})),
+    path("gather-room/reservation/<int:reservation_id>", GatherRoomReservationAPI.as_view({"delete": "destroy"})),
+    path("gather-room/review", GatherRoomReviewAPI.as_view({"post": "create"})), 
+    path("gather-room/review/list", GatherRoomReviewAPI.as_view({"get": "list"})) 
 ]

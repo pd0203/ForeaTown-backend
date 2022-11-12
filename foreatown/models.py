@@ -22,30 +22,18 @@ class GatherRoomCategory(models.Model):
     class Meta:
         db_table = 'gather_room_categories'
     def __str__(self):
-        return self.subject
-
-class GatherRoomCategoryImage(models.Model):
-    img_url = models.URLField(max_length=200, null=True)
-    gather_room_category = models.ForeignKey(GatherRoomCategory, on_delete=models.CASCADE)
-    class Meta:
-        db_table = 'gather_room_category_images'
-    def __str__(self):
-        return self.gather_room_category.name + ' - image'
+        return self.name
 
 class GatherRoom(models.Model):
     subject = models.CharField(max_length=100)
     content = models.TextField(max_length=200)
-    link_url = models.URLField(max_length=200, null=True)
     address = models.CharField(max_length=100, null=True) 
     is_online = models.BooleanField()
     avg_rating = models.FloatField(default=0.0)
     user_limit = models.PositiveSmallIntegerField(default=25)
-    male_ratio = models.FloatField(default=0.5)
-    start_date = models.DateTimeField()
-    end_date = models.DateTimeField()
-    start_time = models.DateTimeField()
-    end_time = models.DateTimeField()
+    date_time = models.DateTimeField(null=True)
     creator = models.ForeignKey('users.User', on_delete = models.CASCADE)
+    participants = models.ManyToManyField('users.User', related_name='participating_gather_rooms', through='foreatown.UserGatherRoomReservation')
     gather_room_category = models.ForeignKey(GatherRoomCategory, on_delete=models.CASCADE)
     class Meta:
         db_table = 'gather_rooms'
@@ -54,7 +42,7 @@ class GatherRoom(models.Model):
 
 class GatherRoomImage(models.Model):
     img_url = models.URLField(max_length=200, null=True)
-    gather_room = models.ForeignKey(GatherRoom, on_delete=models.CASCADE)
+    gather_room = models.ForeignKey(GatherRoom, related_name='gather_room_images', on_delete=models.CASCADE)
     class Meta:
         db_table = 'gather_room_images'
     def __str__(self):
@@ -62,9 +50,9 @@ class GatherRoomImage(models.Model):
 
 class GatherRoomReview(models.Model):
     content = models.TextField(max_length=200)
-    rating = models.FloatField()
-    user = models.ForeignKey('users.User', on_delete=models.CASCADE)
-    gather_room = models.ForeignKey(GatherRoom, on_delete=models.CASCADE)
+    rating = models.PositiveSmallIntegerField()
+    user = models.ForeignKey('users.User', related_name='gather_room_reviews', on_delete=models.CASCADE)
+    gather_room = models.ForeignKey(GatherRoom, related_name='gather_room_reviews', on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     deleted_at = models.DateTimeField(null=True)
     class Meta:
@@ -89,7 +77,7 @@ class GatherRoomHashtag(models.Model):
 
 class UserGatherRoomReservation(models.Model):
     user = models.ForeignKey('users.User', on_delete=models.CASCADE)
-    gather_room = models.ForeignKey(GatherRoom, on_delete=models.CASCADE)
+    gather_room = models.ForeignKey(GatherRoom, related_name='user_gather_room_reservations', on_delete=models.CASCADE)
     class Meta:
         db_table = 'user_gather_room_reservations'
     def __str__(self):
