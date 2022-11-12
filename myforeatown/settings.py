@@ -89,7 +89,6 @@ INSTALLED_APPS = [
 
     # My App
     'users',
-    'nofilter',
     'foreatown'
 ]
 

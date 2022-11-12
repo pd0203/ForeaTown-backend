@@ -1,11 +1,9 @@
 from users.models import *
 from users.serializers import *
-from nofilter.serializers import *
 from rest_framework import generics, status
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.settings import (api_settings as jwt_settings,)
 from allauth.socialaccount.models import SocialAccount
 from allauth.socialaccount.providers.kakao import views as kakao_views
@@ -19,57 +17,13 @@ from django.shortcuts import get_object_or_404
 from json.decoder import JSONDecodeError
 from myforeatown.settings import SIMPLE_JWT
 
-import requests, json, jwt
+import requests, json
 
-# SNS Login Redirect URL
+# SNS Login
 kakao_redirect_uri = getattr(settings, 'KAKAO_CALLBACK_URI')
-# SNS Login RestAPI Key
 kakao_rest_api_key = getattr(settings, 'KAKAO_RESTAPI_KEY')
-# SNS BASE_URL
 service_base_url = getattr(settings, 'SERVICE_BASE_URL')
 
-# user validation 함수
-# DRF에서 제공하는 permission으로 대체 가능합니다.
-# 나중에 좀 더 많은 분류가 필요할때 쓰면 좋을것 같습니다.
-def user_validator(func):
-    def wrapper(self, request, *args, **kwargs):
-        try:
-            JWT_authenticator = JWTAuthentication()
-            response = JWT_authenticator.authenticate(request)
-            if response == None:
-                raise Exception('No Token in Headers')
-            token = request.headers.get('Authorization', None).split()[1]
-            payload = jwt.decode(
-                token,
-                SIMPLE_JWT['SIGNING_KEY'],
-                SIMPLE_JWT['ALGORITHM']
-            )
-            user = User.objects.get(id=payload["user_id"])
-            request.user = user
-            user_info_status = Nofilter_user_info.objects.get(user=user).status
-            request.user_status = user_info_status
-        except jwt.exceptions.DecodeError:
-            return JsonResponse({'message': 'INVALID_TOKEN'}, status=400)
-        except User.DoesNotExist:
-            return JsonResponse({'message': 'INVALID_USER'}, status=400)
-        except Exception as e:
-            return JsonResponse({'message': f'{e}'}, status=400)
-        return func(self, request, *args, **kwargs)
-    return wrapper
-
-def status_validator(func):
-    def wrapper(self, request, *args, **kwargs):
-        try:
-            user_status = request.user_status
-            if user_status != "학생":
-                return JsonResponse({'message': '학생만 접근 가능합니다.'})
-        except Exception as e:
-            return JsonResponse({'message': f'{e}'}, status=400)
-        return func(self, request, *args, **kwargs)
-    return wrapper
-
-
-# 유저 추가정보 입력 페이지 또는 mypage에서 정보 수정할 때 필요한 국가명 자동완성 리스트 API  
 class CountryListAPI(ModelViewSet):
     serializer_class = CountryReadSerializer
     def get_queryset(self): 
@@ -80,7 +34,6 @@ class CountryListAPI(ModelViewSet):
            queryset = queryset.filter(name__icontains=country)
         return queryset 
 
-# Mypage에 필요한 MyUserInfo API
 class MyUserInfoAPI(ModelViewSet):
     permission_classes = [IsAuthenticated]
     queryset = User.objects.all()   
@@ -94,14 +47,10 @@ class MyUserInfoAPI(ModelViewSet):
            return UserUpdateSerializer
         if self.action == 'retrieve':
            return UserReadSerializer 
-    # user가 mypage에 접근했을 때 보여주는 정보를 불러오는 API 
     def retrieve(self, request):
         try:
-            # 토큰 인증된 유저 객체 
             instance = self.get_object()
-            # 해당 유저 객체 유효성 검증해서 필요한 필드값만 불러오기 
             serializer = self.get_serializer(instance)
-            # 불러온 유저 객체 반환 
             return Response(serializer.data)
         except ValueError as v:
             return Response({'ERROR_MESSAGE': v.args}, status=status.HTTP_400_BAD_REQUEST) 
@@ -112,7 +61,6 @@ class MyUserInfoAPI(ModelViewSet):
         except ValueError as v:
             return Response({'ERROR_MESSAGE': v.args}, status=status.HTTP_400_BAD_REQUEST) 
 
-# User 회원가입시 입력된 추가정보를 받아 User 데이터를 수정하는 API
 class AdditionalInfoPatchAPI(generics.UpdateAPIView):
     permission_classes = [IsAuthenticated]
     queryset = User.objects.all()
@@ -127,7 +75,6 @@ class AdditionalInfoPatchAPI(generics.UpdateAPIView):
         except ValueError as v:
             return Response({'ERROR_MESSAGE': v.args}, status=status.HTTP_400_BAD_REQUEST) 
 
-# 자체 서비스 회원가입 API - 기존 dj-rest-auth 제공 회원가입 기능을 커스터마이징
 class SignupAPI(RegisterView):
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -137,7 +84,6 @@ class SignupAPI(RegisterView):
         data = self.get_response_data(user)
         if data:
             del(data['user'])
-            # 기존 user 객체를 없애고 대신 이름만 담아 보내기 
             data['name'] = user.name
             response = Response(
                 data,
@@ -148,7 +94,6 @@ class SignupAPI(RegisterView):
             response = Response(status=status.HTTP_204_NO_CONTENT, headers=headers)
         return response
 
-# 자체 서비스 로그인 API - 기존 dj-rest-auth 제공 로그인 기능을 커스터마이징 
 class LoginAPI(LoginView): 
     def get_response(self):
         serializer_class = self.get_response_serializer()
@@ -184,10 +129,8 @@ class LoginAPI(LoginView):
             set_jwt_cookies(response, self.access_token, self.refresh_token)
         return response
 
-# 카카오 로그인/회원가입 API - Oauth 2.0 방식  
 def kakao_login(request): 
     try :
-      # [1] 프론트로부터 건네받은 인가코드로 카카오 서버에 access token 요청 
       data = json.loads(request.body)
       authentication_code = data["code"]
       access_token_json = requests.get(
@@ -195,24 +138,19 @@ def kakao_login(request):
       error = access_token_json.get("error") 
       if error: 
          raise JSONDecodeError(error)
-      access_token = access_token_json.get("access_token")
-      # [2] 해당 access token으로 카카오 서버로부터 유저 데이터 객체 응답 받기  
+      access_token = access_token_json.get("access_token") 
       user_data_json = requests.get("https://kapi.kakao.com/v2/user/me", headers={'Authorization': 'Bearer {}'.format(access_token)}).json()
       error = user_data_json.get("error")  
       if error:
          raise JSONDecodeError(error) 
-      # [3] 건네받은 Kakao 유저 데이터 객체 파싱     
       kakao_account = user_data_json.get("kakao_account") 
       email = kakao_account.get("email")
       name = kakao_account.get("profile").get("nickname")
       profile_image_url = kakao_account.get("profile").get("profile_image_url")
-      # [4] Login and Signup 
       user = User.objects.get(email=email) 
       social_user = SocialAccount.objects.filter(user=user).first()
-      # 유저가 입력한 이메일로 자체 서비스 회원가입 내역이 있다면 에러발생, 없다면 로그인 
       if social_user is None:
-         raise ValueError('해당 이메일은 서비스에 존재하지만, SNS 유저가 아닙니다')
-      # 유저가 입력한 이메일로 다른 SNS를 통한 회원가입 내역이 있다면 에러 발생, 없다면 로그인 
+         raise ValueError('해당 이메일은 서비스에 존재하지만, SNS 유저가 아닙니다') 
       if social_user.provider != 'kakao':
          raise ValueError('해당 이메일은 이미', social_user.provider, 'SNS 계정으로 회원가입 되어 있습니다') 
       data = {'access_token': access_token, 'code': authentication_code}
@@ -223,11 +161,8 @@ def kakao_login(request):
          raise ValueError('로그인에 실패했습니다. 다시 시도해주시기 바랍니다')
       accept_json = accept.json()
       accept_json.pop('user', None)
-      # 카카오톡 프로필 이미지가 변경됬을 경우에 대비해서 매번 로그인시 프로필 업데이트 
       User.objects.filter(email=email).update(profile_img_url=profile_image_url)
-      # user의 access token, refresh token을 담은 객체를 프론트에 반환 
       return JsonResponse(accept_json)
-    # 기존에 가입된 유저가 없으면 새로 가입
     except User.DoesNotExist:
         data = {'access_token': access_token, 'code': authentication_code}
         accept = requests.post(
@@ -235,7 +170,6 @@ def kakao_login(request):
         accept_status = accept.status_code
         if accept_status != 200:
            raise ValueError('로그인에 실패했습니다. 다시 시도해주시기 바랍니다') 
-        # user의 access Token, refresh token을 json 형태로 프론트에 반환 
         accept_json = accept.json()
         accept_json.pop('user', None)
         User.objects.filter(email=email).update(name=name, password="", sns_type="카카오톡", profile_img_url=profile_image_url)
@@ -243,8 +177,6 @@ def kakao_login(request):
     except ValueError as v:
         return JsonResponse({'ERROR_MESSAGE': v.args[0]}, status=status.HTTP_400_BAD_REQUEST) 
 
-# 카카오 로그인/회원가입 API - Oauth 2.0 방식
-# User가 DB Table에 존재하면 알아서 로그인 처리해주고 존재하지 않으면 회원가입 처리해주는 클래스 
 class KakaoLogin(SocialLoginView):
     adapter_class = kakao_views.KakaoOAuth2Adapter
     client_class = OAuth2Client
