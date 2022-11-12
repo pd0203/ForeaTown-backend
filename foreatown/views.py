@@ -56,16 +56,21 @@ class S3Client:
       #   except:
       #       return None
 
-
 class GatherRoomAPI(ModelViewSet):
     queryset = GatherRoom.objects.all()
     permission_classes = [IsAuthenticatedOrReadOnly]    
     s3_client = S3Client(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_S3_BUCKET_NAME)
     def get_object(self):
-        if self.action == 'created_list':
-           return get_object_or_404(self.queryset, creator=self.request.user) 
+        queryset = self.get_queryset()
+        if self.action == 'my_list':
+           return get_object_or_404(queryset, creator=self.request.user)
+        if self.action == 'retrieve':
+           return get_object_or_404(queryset, id=self.kwargs.get('id')) 
+        if self.action == 'partial_update' or self.action == 'destroy': 
+           return get_object_or_404(queryset, creator=self.request.user, id=self.kwargs.get('id'))
+        return get_object_or_404(queryset, user=self.request.user)
     def get_serializer_class(self):
-        if self.action == 'list' or self.action == 'created_list':
+        if self.action == 'list' or self.action == 'my_list':
            return GatherRoomReadSerializer       
         if self.action == 'retrieve':
            return GatherRoomRetrieveSerializer
@@ -92,8 +97,8 @@ class GatherRoomAPI(ModelViewSet):
         except Exception as e:
            return Response({'ERROR_MESSAGE': e.args}, status=status.HTTP_400_BAD_REQUEST)
     ########################################################################################## - 완성
-    # 2. GatherRoomCreatedListAPI() 
-    def created_list(self, request):
+    # GatherRoomMyListAPI() 
+    def my_list(self, request):
         try: 
            gather_room_instance = GatherRoom.objects.all()
            serializer = self.get_serializer(gather_room_instance, many=True)
@@ -101,18 +106,17 @@ class GatherRoomAPI(ModelViewSet):
         except Exception as e:
            return Response({'ERROR_MESSAGE': e.args}, status=status.HTTP_400_BAD_REQUEST)
     ########################################################################################## - 완성 
-    # GatherRoomRetrieveAPI()
+    # GatherRoom Retrieve API()
     # GatherRoom 디테일 페이지 보여줄 때 사용하는 Method
     def retrieve(self, request, *args, **kwargs):
         try:
-           queryset = self.get_queryset()
-           gather_room_instance = get_object_or_404(queryset, id=kwargs.get('id'))
+           gather_room_instance = self.get_object() 
            serializer = self.get_serializer(gather_room_instance)
            return Response(serializer.data)
         except Exception as e:
            return Response({'ERROR_MESSAGE': e.args}, status=status.HTTP_400_BAD_REQUEST)
     ########################################################################################## - 완성
-    # GatherRoomPostAPI()
+    # GatherRoom Post API()
     # GatherRoom 포스팅할 떄 사용하는 Method이며, 사진 파일이 첨부되어 있으면 S3에 저장후 해당 파일 URL을 DB에 저장
     def create(self, request, *args, **kwargs):
         try:
@@ -120,12 +124,11 @@ class GatherRoomAPI(ModelViewSet):
             data = {
                'subject': request.data['subject'],
                'content': request.data['content'],
-               # 'room_thema_id': int(request.data['room_thema_id']),
                'address': request.data['address'],
                'is_online': True if request.data['is_online'] == 'True' else False, 
                'user_limit': int(request.data['user_limit']),
                'date_time': datetime.strptime(request.data['date_time'], '%Y-%m-%d %H:%M:%S'),
-               'creator': self.request.user.id,
+               'creator': request.user.id,
                'gather_room_category': {'name': request.data['gather_room_category']},
                'gather_room_images': self.retrieve_gather_room_image_url_list(request.FILES, 'gather_room_images')
             }
@@ -134,21 +137,19 @@ class GatherRoomAPI(ModelViewSet):
             serializer.is_valid(raise_exception=True)
             self.perform_create(serializer)
             headers = self.get_success_headers(serializer.data)
-            return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+            return Response({"SUCESSFULLY_CREATED"}, status=status.HTTP_201_CREATED, headers=headers)
         except Exception as e:
             return Response({'ERROR_MESSAGE': e.args}, status=status.HTTP_400_BAD_REQUEST) 
     ########################################################################################## - 완성
-    # 4. GatherRoomUpdateAPI()
+    # GatherRoom Update API()
     def partial_update(self, request, *args, **kwargs): 
         try :
            partial = kwargs.pop('partial', False)
-           queryset = self.get_queryset()
-           gather_room_instance = get_object_or_404(queryset, creator=self.request.user, id=kwargs.get('id'))
+           gather_room_instance = self.get_object() 
            # convert formdata to json format 
            data = {
               'subject': request.data['subject'],
               'content': request.data['content'],
-              # 'room_thema_id': int(request.data['room_thema_id']),
               'address': request.data['address'],
               'is_online': True if request.data['is_online'] == 'True' else False, 
               'user_limit': int(request.data['user_limit']),
@@ -167,6 +168,14 @@ class GatherRoomAPI(ModelViewSet):
            return Response(serializer.data)
         except Exception as e:
            return Response({'ERROR_MESSAGE': e.args}, status=status.HTTP_400_BAD_REQUEST)
+    # GatherRoom Delete API()
+    def destroy(self, request, *args, **kwargs):
+        try: 
+           instance = self.get_object()
+           self.perform_destroy(instance)
+           return Response({"SUCESSFULLY_DELETED"}, status=status.HTTP_204_NO_CONTENT)
+        except Exception as e:
+           return Response({'ERROR_MESSAGE': e.args}, status=status.HTTP_400_BAD_REQUEST)
     # Upload image files into AWS S3 storage and retrieve the list of S3 image file url
     def retrieve_gather_room_image_url_list(self, files, files_key):  
         images_list = [] 
@@ -175,28 +184,25 @@ class GatherRoomAPI(ModelViewSet):
             image_obj['img_url'] = self.s3_client.upload(image_file)
             images_list.append(image_obj)
         return images_list 
-    # Upload image files into AWS S3 storage and retrieve the list of S3 image file url
     
-
 class GatherRoomReservationAPI(ModelViewSet):
     permission_classes = [IsAuthenticated]
     queryset = UserGatherRoomReservation.objects.all()   
     def get_object(self): 
         queryset = self.get_queryset()
-        return get_object_or_404(queryset, id=self.request.user.id)
+        if self.action == 'destroy': 
+           return get_object_or_404(queryset, user=self.request.user, id=self.kwargs.get('reservation_id'))
+        return get_object_or_404(queryset, user=self.request.user)
     def get_serializer_class(self):
         if self.action == 'create':
-           return GatherRoomReservationSerializer
+           return GatherRoomReservationCreateSerializer
         if self.action == 'list':
-           return GatherRoomReservationSerializer       
-   #      if self.action == 'destroy': 
-   #         return ReservationDeleteSerializer  
-    #  ReservationPostAPI()
+           return GatherRoomReservationReadSerializer    
+    # GatherRoomReservation Post API()
     def create(self, request, *args, **kwargs):
-        try:
-           # convert formdata to json format  
+        try: 
            data = {
-              'user': self.request.user.id, 
+              'user': request.user.id, 
               'gather_room': request.data['gather_room_id']
            }
            # Validate the data through serializer
@@ -204,31 +210,46 @@ class GatherRoomReservationAPI(ModelViewSet):
            serializer.is_valid(raise_exception=True)
            self.perform_create(serializer)
            headers = self.get_success_headers(serializer.data)
-           return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+           return Response({"SUCESSFULLY_CREATED"}, status=status.HTTP_201_CREATED, headers=headers)
         except Exception as e:
            return Response({'ERROR_MESSAGE': e.args}, status=status.HTTP_400_BAD_REQUEST)
-    #  ReservationListAPI() 
+    # GatherRoomReservation List API() 
     def list(self, request, *args, **kwargs):
         try: 
-           gather_room_reservation_instance = UserGatherRoomReservation.objects.filter(user=self.request.user.id)
+           gather_room_reservation_instance = UserGatherRoomReservation.objects.filter(user=self.request.user)
            serializer = self.get_serializer(gather_room_reservation_instance, many=True)
            return Response(serializer.data)
         except Exception as e:
            return Response({'ERROR_MESSAGE': e.args}, status=status.HTTP_400_BAD_REQUEST)
+    # GatherRoomReservation Delete API()
     def destroy(self, request, *args, **kwargs):
         try: 
-           gather_room_reservation_instance = UserGatherRoomReservation.objects.filter(user=self.request.user.id)
-           serializer = self.get_serializer(gather_room_reservation_instance, many=True)
-           return Response(serializer.data)
+           instance = self.get_object()
+           self.perform_destroy(instance)
+           return Response({"SUCESSFULLY_DELETED"}, status=status.HTTP_204_NO_CONTENT)
         except Exception as e:
            return Response({'ERROR_MESSAGE': e.args}, status=status.HTTP_400_BAD_REQUEST)
-    # def retrieve_gather_room_id_list(self, reservation_list): 
-    #     reserved_gather_room_list = []
-    #     for reservation in reservation_list: 
-    #         reserved_gather_room_list.append(reservation['gather_room'])
-    #     return reserved_gather_room_list
-    #  ReservationDeleteAPI()
-    #def destroy(self, request, *args, **kwargs): 
 
-
-
+class GatherRoomReviewAPI(ModelViewSet):
+    queryset = GatherRoomReview.objects.all()
+    permission_classes = [IsAuthenticatedOrReadOnly]    
+    def get_serializer_class(self):
+        if self.action == 'create': 
+           return GatherRoomReviewCreateSerializer 
+    # GatherRoomReview Create API     
+    def create(self, request, *args, **kwargs): 
+        try:
+           data = {
+              'content': request.data['content'],
+              'rating': request.data['rating'], 
+              'user': request.user.id, 
+              'gather_room': request.data['gather_room_id']
+           }
+           # Validate the data through serializer
+           serializer = self.get_serializer(data=data)
+           serializer.is_valid(raise_exception=True)
+           self.perform_create(serializer)
+           headers = self.get_success_headers(serializer.data)
+           return Response({"SUCESSFULLY_CREATED"}, status=status.HTTP_201_CREATED, headers=headers)
+        except Exception as e:
+           return Response({'ERROR_MESSAGE': e.args}, status=status.HTTP_400_BAD_REQUEST)

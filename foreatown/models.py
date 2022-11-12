@@ -50,9 +50,9 @@ class GatherRoomImage(models.Model):
 
 class GatherRoomReview(models.Model):
     content = models.TextField(max_length=200)
-    rating = models.FloatField()
+    rating = models.PositiveSmallIntegerField()
     user = models.ForeignKey('users.User', related_name='gather_room_reviews', on_delete=models.CASCADE)
-    gather_room = models.ForeignKey(GatherRoom, on_delete=models.CASCADE)
+    gather_room = models.ForeignKey(GatherRoom, related_name='gather_room_reviews', on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     deleted_at = models.DateTimeField(null=True)
     class Meta:
@@ -77,7 +77,7 @@ class GatherRoomHashtag(models.Model):
 
 class UserGatherRoomReservation(models.Model):
     user = models.ForeignKey('users.User', on_delete=models.CASCADE)
-    gather_room = models.ForeignKey(GatherRoom, on_delete=models.CASCADE)
+    gather_room = models.ForeignKey(GatherRoom, related_name='user_gather_room_reservations', on_delete=models.CASCADE)
     class Meta:
         db_table = 'user_gather_room_reservations'
     def __str__(self):

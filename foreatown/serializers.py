@@ -2,6 +2,7 @@ from queue import Empty
 from rest_framework import serializers
 from foreatown.models import *
 from django.conf import settings
+from rest_framework import exceptions
 from drf_writable_nested.serializers import WritableNestedModelSerializer
 from users.serializers import CreatorSerializer, ParticipantSerializer
 
@@ -107,8 +108,37 @@ class GatherRoomOnlineUpdateSerializer(WritableNestedModelSerializer):
         ## 1. 만약 creator가 겹치는 시간 대에 또다른 GatherRoom을 생성한 레코드가 있다면 raise ValueError
         return data
 
-class GatherRoomReservationSerializer(serializers.ModelSerializer):
+class GatherRoomReservationCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserGatherRoomReservation
+        fields = ['user', 'gather_room']
+    def validate(self, data):
+        # 유저가 해당 gather_room을 이미 예약한 내역이 있다면, 예약 중복 처리 불가 에러 발생
+        reservation_history = UserGatherRoomReservation.objects.filter(user=data['user'], gather_room=data['gather_room'])
+        if reservation_history: 
+           raise ValueError("User already made the reservation for this gather_room")
+        return data
+
+class GatherRoomReservationReadSerializer(serializers.ModelSerializer):
     gather_room = GatherRoomReadSerializer()
     class Meta:
         model = UserGatherRoomReservation
-        fields = ['gather_room']
+        fields = ['id', 'gather_room']
+
+class GatherRoomReviewCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = GatherRoomReview 
+        fields = ['content', 'rating', 'user', 'gather_room']
+    def validate(self, data):
+        # 유저가 gather_room을 예약한 내역이 없다면, 리뷰 작성 처리 불가 에러 발생 
+        reservation_history = UserGatherRoomReservation.objects.filter(user=data['user'], gather_room=data['gather_room']) 
+        if not reservation_history: 
+           raise exceptions.ValidationError("Participants are only allowed to write a review")
+        # 유저가 해당 gather_room 관련 예약 작성 내역이 이미 있다면, 리뷰 중복 작성 불가 에러 발생 
+        review_history = GatherRoomReview.objects.filter(user=data['user'], gather_room=data['gather_room']) 
+        if review_history: 
+           raise exceptions.ValidationError("User already posted a review") 
+        # rating이 0~5 범위가 아니라면 에러 발생 
+        if data['rating'] < 0 or data['rating'] > 5: 
+           raise ValueError("Rating must be between 0 and 5")
+        return data 
