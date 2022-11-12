@@ -9,13 +9,10 @@ pymysql.install_as_MySQLdb()
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# load .env
 load_dotenv()
 
-# SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.environ.get('SECRET_KEY')
 
-# SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
 ALLOWED_HOSTS = ['*']
@@ -46,9 +43,10 @@ ACCOUNT_EMAIL_VERIFICATION = 'none'
 # dj-rest-auth 회원가입 커스터마이징을 위한 어뎁터 설정
 ACCOUNT_ADAPTER = 'users.adapters.CustomAccountAdapter'
 
-# ACCOUNT_LOGOUT_ON_GET = True # 로그아웃 버튼 클릭 시 자동 로그아웃
+# 로그아웃 버튼 클릭 시 자동 로그아웃
+# ACCOUNT_LOGOUT_ON_GET = True 
 
-# 서버 URL의 root가 되는 파일 설정 
+# 서버 URL의 root가 되는 파일 설정
 ROOT_URLCONF = 'myforeatown.urls'
 
 # Application definition
@@ -100,11 +98,9 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    # 'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    # 'nofilter.exception.ExceptionMiddleware',
 ]
 
 TEMPLATES = [
@@ -125,7 +121,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'myforeatown.wsgi.application'
 
-# Database
+# Database settings
 # https://docs.djangoproject.com/en/3.2/ref/settings/#databases
 DATABASES = {
     'default': {
@@ -194,8 +190,7 @@ CORS_ALLOW_HEADERS = [
     'origin',
     'user-agent',
     'x-csrftoken',
-    'x-requested-with',
-    # 만약 허용해야할 추가적인 헤더키가 있다면?(사용자정의 키) 여기에 추가하면 됩니다.
+    'x-requested-with'
 ]
 CORS_ALLOW_METHODS = [
     'DELETE',
@@ -207,13 +202,9 @@ CORS_ALLOW_METHODS = [
 ]
 
 REST_FRAMEWORK = {
-    # 'DEFAULT_PERMISSION_CLASSES': (
-    #     'rest_framework.permissions.IsAuthenticated',
-    # ),
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',
-        # 'rest_framework.authentication.TokenAuthentication',
     ],
     'DEFAULT_FILTER_BACKENDS': [
         'django_filters.rest_framework.DjangoFilterBackend',
@@ -239,41 +230,6 @@ REST_USE_JWT = True
 # 엑셀 파일 데이터를 DB에 삽입시 발생하는 허용량 초과 범위를 늘려주는 명령어
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 30000 
 
-SPECTACULAR_SETTINGS = {
-    # General schema metadata. Refer to spec for valid inputs
-    # https://github.com/OAI/OpenAPI-Specification/blob/master/versions/3.0.3.md#openapi-object
-    'TITLE': 'FOREATOWN',
-    'DESCRIPTION': 'FOREATOWN API Cocument',
-    # Optional: MAY contain "name", "url", "email"
-    # 'CONTACT': {'name': '박현희', 'email': 'hyoniiiwood@gmail.com'},
-    # Swagger UI를 좀더 편리하게 사용하기위해 기본옵션들을 수정한 값들입니다.
-    'SWAGGER_UI_SETTINGS': {
-        # https://swagger.io/docs/open-source-tools/swagger-ui/usage/configuration/  <- 여기 들어가면 어떤 옵션들이 더 있는지 알수있습니다.
-        'dom_id': '#swagger-ui',  # required(default)
-        'layout': 'BaseLayout',  # required(default)
-        # API를 클릭할때 마다 SwaggerUI의 url이 변경됩니다. (특정 API url 공유시 유용하기때문에 True설정을 사용합니다)
-        'deepLinking': True,
-        # True 이면 SwaggerUI상 Authorize에 입력된 정보가 새로고침을 하더라도 초기화되지 않습니다.
-        'persistAuthorization': False,
-        # True이면 API의 urlId 값을 노출합니다. 대체로 DRF api name둘과 일치하기때문에 api를 찾을때 유용합니다.
-        'displayOperationId': True,
-        'filter': True,  # True 이면 Swagger UI에서 'Filter by Tag' 검색이 가능합니다
-    },
-    # Optional: MUST contain "name", MAY contain URL
-    'LICENSE': {
-        'name': 'FOREATOWN',
-        'url': 'https://github.com/copacabanaCEO',
-    },
-    'VERSION': '1.0.0',
-    'SERVE_INCLUDE_SCHEMA': False,  # OAS3 Meta정보 API를 비노출 처리합니다.
-
-    # https://www.npmjs.com/package/swagger-ui-dist 해당 링크에서 최신버전을 확인후 취향에 따라 version을 수정해서 사용하세요.
-    # Swagger UI 버전을 조절할수 있습니다.
-    'SWAGGER_UI_DIST': '//unpkg.com/swagger-ui-dist@3.38.0',
-    'COMPONENT_SPLIT_REQUEST': True
-}
-
-# 로깅설정
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
