@@ -15,7 +15,7 @@ SECRET_KEY = os.environ.get('SECRET_KEY')
 
 DEBUG = False 
 
-ALLOWED_HOSTS = ['13.125.197.230']
+ALLOWED_HOSTS = ['api.foreatown.com']
 
 SITE_ID = 12
 
