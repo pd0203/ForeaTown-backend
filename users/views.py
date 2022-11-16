@@ -27,12 +27,15 @@ service_base_url = getattr(settings, 'SERVICE_BASE_URL')
 class CountryListAPI(ModelViewSet):
     serializer_class = CountryReadSerializer
     def get_queryset(self): 
-        queryset = Country.objects.all()
-        country = self.request.query_params.get('name', '') 
-        if country: 
-           queryset = Country.objects.order_by('name').values('name').distinct()
-           queryset = queryset.filter(name__icontains=country)
-        return queryset 
+        try: 
+          queryset = Country.objects.all()
+          country = self.request.query_params.get('name', '') 
+          if country: 
+             queryset = Country.objects.order_by('name').values('name').distinct()
+             queryset = queryset.filter(name__icontains=country)
+          return queryset 
+        except ValueError as v:
+          return Response({'ERROR_MESSAGE': v.args}, status=status.HTTP_400_BAD_REQUEST)
 
 class MyUserInfoAPI(ModelViewSet):
     permission_classes = [IsAuthenticated]
@@ -49,85 +52,91 @@ class MyUserInfoAPI(ModelViewSet):
            return UserReadSerializer 
     def retrieve(self, request):
         try:
-            instance = self.get_object()
-            serializer = self.get_serializer(instance)
-            return Response(serializer.data)
+          instance = self.get_object()
+          serializer = self.get_serializer(instance)
+          return Response(serializer.data)
         except ValueError as v:
-            return Response({'ERROR_MESSAGE': v.args}, status=status.HTTP_400_BAD_REQUEST) 
+          return Response({'ERROR_MESSAGE': v.args}, status=status.HTTP_400_BAD_REQUEST) 
     def partial_update(self, request, *args, **kwargs):
         try: 
           kwargs['partial'] = True
           return self.update(request, *args, **kwargs)
         except ValueError as v:
-            return Response({'ERROR_MESSAGE': v.args}, status=status.HTTP_400_BAD_REQUEST) 
+          return Response({'ERROR_MESSAGE': v.args}, status=status.HTTP_400_BAD_REQUEST) 
 
 class AdditionalInfoPatchAPI(generics.UpdateAPIView):
     permission_classes = [IsAuthenticated]
     queryset = User.objects.all()
     serializer_class = UserUpdateSerializer
     def get_object(self): 
-       queryset = self.get_queryset()
-       return get_object_or_404(queryset, id=self.request.user.id)
+        queryset = self.get_queryset()
+        return get_object_or_404(queryset, id=self.request.user.id)
     def partial_update(self, request, *args, **kwargs):
         try: 
           kwargs['partial'] = True
           return self.update(request, *args, **kwargs)
         except ValueError as v:
-            return Response({'ERROR_MESSAGE': v.args}, status=status.HTTP_400_BAD_REQUEST) 
+          return Response({'ERROR_MESSAGE': v.args}, status=status.HTTP_400_BAD_REQUEST) 
 
 class SignupAPI(RegisterView):
     def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        user = self.perform_create(serializer)
-        headers = self.get_success_headers(serializer.data)
-        data = self.get_response_data(user)
-        if data:
-            del(data['user'])
-            data['name'] = user.name
-            response = Response(
+        try: 
+          serializer = self.get_serializer(data=request.data)
+          serializer.is_valid(raise_exception=True)
+          user = self.perform_create(serializer)
+          headers = self.get_success_headers(serializer.data)
+          data = self.get_response_data(user)
+          if data:
+             del(data['user'])
+             data['name'] = user.name
+             response = Response(
                 data,
                 status=status.HTTP_201_CREATED,
                 headers=headers,
-            )
-        else:
-            response = Response(status=status.HTTP_204_NO_CONTENT, headers=headers)
-        return response
+             )
+          else:
+             response = Response(status=status.HTTP_204_NO_CONTENT, headers=headers)
+          return response
+        except ValueError as v:
+          return Response({'ERROR_MESSAGE': v.args}, status=status.HTTP_400_BAD_REQUEST) 
 
 class LoginAPI(LoginView): 
     def get_response(self):
-        serializer_class = self.get_response_serializer()
-        if getattr(settings, 'REST_USE_JWT', False):
-            access_token_expiration = (timezone.now() + jwt_settings.ACCESS_TOKEN_LIFETIME)
-            refresh_token_expiration = (timezone.now() + jwt_settings.REFRESH_TOKEN_LIFETIME)
-            return_expiration_times = getattr(settings, 'JWT_AUTH_RETURN_EXPIRATION', False)
-            data = {
+        try: 
+          serializer_class = self.get_response_serializer()
+          if getattr(settings, 'REST_USE_JWT', False):
+             access_token_expiration = (timezone.now() + jwt_settings.ACCESS_TOKEN_LIFETIME)
+             refresh_token_expiration = (timezone.now() + jwt_settings.REFRESH_TOKEN_LIFETIME)
+             return_expiration_times = getattr(settings, 'JWT_AUTH_RETURN_EXPIRATION', False)
+             data = {
                 'user': self.user,
                 'access_token': self.access_token,
                 'refresh_token': self.refresh_token,
-            }
-            if return_expiration_times:
+             }
+             if return_expiration_times:
                 data['access_token_expiration'] = access_token_expiration
                 data['refresh_token_expiration'] = refresh_token_expiration
-            serializer = serializer_class(
+             serializer = serializer_class(
                 instance=data,
                 context=self.get_serializer_context(),
-            )
-        elif self.token:
-            serializer = serializer_class(
+             )
+          elif self.token:
+             serializer = serializer_class(
                 instance=self.token,
                 context=self.get_serializer_context(),
-            )
-        else:
+             )
+          else:
             return Response(status=status.HTTP_204_NO_CONTENT)        
-        response_obj = {} 
-        response_obj['access_token'] = serializer.data['access_token']
-        response_obj['refresh_token'] = serializer.data['refresh_token'] 
-        response_obj['name'] = self.user.name 
-        response = Response(response_obj, status=status.HTTP_200_OK)
-        if getattr(settings, 'REST_USE_JWT', False):
-            set_jwt_cookies(response, self.access_token, self.refresh_token)
-        return response
+          response_obj = {} 
+          response_obj['access_token'] = serializer.data['access_token']
+          response_obj['refresh_token'] = serializer.data['refresh_token'] 
+          response_obj['name'] = self.user.name 
+          response = Response(response_obj, status=status.HTTP_200_OK)
+          if getattr(settings, 'REST_USE_JWT', False):
+             set_jwt_cookies(response, self.access_token, self.refresh_token)
+          return response
+        except ValueError as v: 
+          return Response({'ERROR_MESSAGE': v.args}, status=status.HTTP_400_BAD_REQUEST)
 
 def kakao_login(request): 
     try :
