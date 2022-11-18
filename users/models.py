@@ -29,7 +29,7 @@ class UserManager(BaseUserManager):
 class User(AbstractUser):
     name = models.CharField(max_length=30, unique=False)
     nickname = models.CharField(max_length=30, unique=False, null=True)
-    email = models.EmailField(max_length=50, unique=True)
+    email = models.EmailField(unique=True)
     sns_type = models.CharField(max_length=10, null=True)
     age = models.PositiveIntegerField(default=0)
     is_male = models.BooleanField(null=True, default=True)

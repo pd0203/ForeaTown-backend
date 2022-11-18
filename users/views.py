@@ -99,6 +99,7 @@ class SignupAPI(RegisterView):
           return response
         except ValueError as v:
           return Response({'ERROR_MESSAGE': v.args}, status=status.HTTP_400_BAD_REQUEST) 
+      
 
 class LoginAPI(LoginView): 
     def get_response(self):
