@@ -13,9 +13,9 @@ load_dotenv()
 
 SECRET_KEY = os.environ.get('SECRET_KEY')
 
-DEBUG = True
+DEBUG = False 
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = ['api.foreatown.com']
 
 SITE_ID = 12
 
@@ -28,26 +28,6 @@ AWS_S3_BUCKET_NAME = os.environ.get('AWS_S3_BUCKET_NAME')
 KAKAO_RESTAPI_KEY = os.environ.get('KAKAO_REST_API_KEY')
 KAKAO_CALLBACK_URI = os.environ.get('KAKAO_REDIRECT_URI')
 SERVICE_BASE_URL = os.environ.get('BASE_URL')
-
-# Re-definition of User Model
-AUTH_USER_MODEL = 'users.User'
-
-# User Account Setting
-ACCOUNT_USER_MODEL_USERNAME_FIELD = None
-ACCOUNT_EMAIL_REQUIRED = True
-ACCOUNT_UNIQUE_EMAIL =True 
-ACCOUNT_USERNAME_REQUIRED = False
-ACCOUNT_AUTHENTICATION_METHOD = 'email'
-ACCOUNT_EMAIL_VERIFICATION = 'none'
-
-# dj-rest-auth 회원가입 커스터마이징을 위한 어뎁터 설정
-ACCOUNT_ADAPTER = 'users.adapters.CustomAccountAdapter'
-
-# 로그아웃 버튼 클릭 시 자동 로그아웃
-# ACCOUNT_LOGOUT_ON_GET = True 
-
-# 서버 URL의 root가 되는 파일 설정
-ROOT_URLCONF = 'myforeatown.urls'
 
 # Application definition
 INSTALLED_APPS = [
@@ -85,21 +65,40 @@ INSTALLED_APPS = [
     # CORS Policy
     'corsheaders',
     'django_filters',
-    'drf_spectacular',
 
     # My App
     'users',
     'foreatown'
 ]
 
+# Re-definition of User Model
+AUTH_USER_MODEL = 'users.User'
+
+# User Account Setting
+ACCOUNT_USER_MODEL_USERNAME_FIELD = None
+ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_UNIQUE_EMAIL =True 
+ACCOUNT_USERNAME_REQUIRED = False
+ACCOUNT_AUTHENTICATION_METHOD = 'email'
+ACCOUNT_EMAIL_VERIFICATION = 'none'
+
+# dj-rest-auth 회원가입 커스터마이징을 위한 어뎁터 설정
+ACCOUNT_ADAPTER = 'users.adapters.CustomAccountAdapter'
+
+# 로그아웃 버튼 클릭 시 자동 로그아웃
+# ACCOUNT_LOGOUT_ON_GET = True 
+
+# 서버 URL의 root가 되는 파일 설정
+ROOT_URLCONF = 'myforeatown.urls'
+
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
-    'django.middleware.common.CommonMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.common.CommonMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware'
 ]
 
 TEMPLATES = [
@@ -170,8 +169,8 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/4.0/howto/static-files/
 STATIC_URL = 'static/'
 
-# Default primary key field type
-# https://docs.djangoproject.com/en/4.0/ref/settings/#default-auto-field
+# Default primaryj key field type
+# https://docs.dangoproject.com/en/4.0/ref/settings/#default-auto-field
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # REMOVE_APPEND_SLASH_WARNING
@@ -201,14 +200,19 @@ CORS_ALLOW_METHODS = [
 ]
 
 REST_FRAMEWORK = {
-    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ],
-    'DEFAULT_FILTER_BACKENDS': [
-        'django_filters.rest_framework.DjangoFilterBackend',
-    ],
+    # 'DEFAULT_FILTER_BACKENDS': [
+    #     'django_filters.rest_framework.DjangoFilterBackend',
+    # ],
 }
+
+# Add the 'allauth' backend to AUTHENTICATION_BACKEND and keep default ModelBackend
+AUTHENTICATION_BACKENDS = [ 
+    'django.contrib.auth.backends.ModelBackend',
+    'allauth.account.auth_backends.AuthenticationBackend'
+]
 
 # dj-rest-auth 회원가입 커스터마이징을 위한 시리얼라이저 설정 
 REST_AUTH_REGISTER_SERIALIZERS = {
