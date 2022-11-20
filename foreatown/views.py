@@ -1,5 +1,6 @@
 from foreatown.models import *
 from foreatown.serializers import *
+from users.models import User 
 from rest_framework import status
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.response import Response
@@ -42,8 +43,6 @@ class GatherRoomAPI(ModelViewSet):
     s3_client = S3Client(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_S3_BUCKET_NAME)
     def get_object(self):
         queryset = self.get_queryset()
-        if self.action == 'my_list':
-           return get_object_or_404(queryset, creator=self.request.user)
         if self.action == 'retrieve':
            return get_object_or_404(queryset, id=self.kwargs.get('id')) 
         if self.action == 'partial_update' or self.action == 'destroy': 
@@ -67,16 +66,17 @@ class GatherRoomAPI(ModelViewSet):
     def list(self, request, *args, **kwargs):
         try: 
            gather_room_category = kwargs.get('gather_room_category_id') 
-           gather_room_instance = GatherRoom.objects.all()
+           gather_room_instance = self.queryset
            if gather_room_category: 
               gather_room_instance = GatherRoom.objects.filter(gather_room_category=kwargs.get('gather_room_category_id'))
            serializer = self.get_serializer(gather_room_instance, many=True)
            return Response(serializer.data)
         except Exception as e:
            return Response({'ERROR_MESSAGE': e.args}, status=status.HTTP_400_BAD_REQUEST)
-    def my_list(self, request):
+    def my_list(self, request, *args, **kwargs):
         try: 
-           gather_room_instance = GatherRoom.objects.all()
+           gather_room_creator = kwargs.get('user_id')
+           gather_room_instance = GatherRoom.objects.filter(creator=gather_room_creator)
            serializer = self.get_serializer(gather_room_instance, many=True)
            return Response(serializer.data)
         except Exception as e:

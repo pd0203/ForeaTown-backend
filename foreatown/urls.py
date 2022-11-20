@@ -6,7 +6,7 @@ urlpatterns = [
     path("gather-room/<int:id>", GatherRoomAPI.as_view({"get": "retrieve", "patch": "partial_update", "delete": "destroy"})),
     path("gather-room/list", GatherRoomAPI.as_view({"get": "list"})),
     path("gather-room/list/<int:gather_room_category_id>", GatherRoomAPI.as_view({"get": "list"})), 
-    path("gather-room/mylist", GatherRoomAPI.as_view({"get": "my_list"})),   
+    path("gather-room/mylist/<int:user_id>", GatherRoomAPI.as_view({"get": "my_list"})),   
     path("gather-room/reservation", GatherRoomReservationAPI.as_view({"post": "create"})),
     path("gather-room/reservation/list", GatherRoomReservationAPI.as_view({"get": "list"})),
     path("gather-room/reservation/<int:reservation_id>", GatherRoomReservationAPI.as_view({"delete": "destroy"})),
