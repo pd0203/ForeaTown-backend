@@ -66,7 +66,7 @@ class GatherRoomRetrieveSerializer(serializers.ModelSerializer):
     gather_room_images = GatherRoomImageSerializer(many=True, read_only=True) 
     class Meta: 
         model = GatherRoom   
-        fields = ['id', 'subject', 'content', 'is_online', 'user_limit', 'date_time', 'creator', 'participants', 'gather_room_category', 'gather_room_images']
+        fields = ['id', 'subject', 'content', 'address', 'is_online', 'user_limit', 'date_time', 'creator', 'participants', 'gather_room_category', 'gather_room_images']
 
 class GatherRoomOfflineUpdateSerializer(WritableNestedModelSerializer):
     gather_room_category = GatherRoomCategoryRetrieveIdByNameSerializer()

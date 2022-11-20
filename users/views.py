@@ -34,8 +34,8 @@ class CountryListAPI(ModelViewSet):
              queryset = Country.objects.order_by('name').values('name').distinct()
              queryset = queryset.filter(name__icontains=country)
           return queryset 
-        except ValueError as v:
-          return Response({'ERROR_MESSAGE': v.args}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+           return Response({'ERROR_MESSAGE': e.args}, status=status.HTTP_400_BAD_REQUEST)
 
 class MyUserInfoAPI(ModelViewSet):
     permission_classes = [IsAuthenticated]
@@ -55,14 +55,14 @@ class MyUserInfoAPI(ModelViewSet):
           instance = self.get_object()
           serializer = self.get_serializer(instance)
           return Response(serializer.data)
-        except ValueError as v:
-          return Response({'ERROR_MESSAGE': v.args}, status=status.HTTP_400_BAD_REQUEST) 
+        except Exception as e:
+           return Response({'ERROR_MESSAGE': e.args}, status=status.HTTP_400_BAD_REQUEST) 
     def partial_update(self, request, *args, **kwargs):
         try: 
           kwargs['partial'] = True
           return self.update(request, *args, **kwargs)
-        except ValueError as v:
-          return Response({'ERROR_MESSAGE': v.args}, status=status.HTTP_400_BAD_REQUEST) 
+        except Exception as e:
+           return Response({'ERROR_MESSAGE': e.args}, status=status.HTTP_400_BAD_REQUEST) 
 
 class AdditionalInfoPatchAPI(generics.UpdateAPIView):
     permission_classes = [IsAuthenticated]
@@ -75,8 +75,8 @@ class AdditionalInfoPatchAPI(generics.UpdateAPIView):
         try: 
           kwargs['partial'] = True
           return self.update(request, *args, **kwargs)
-        except ValueError as v:
-          return Response({'ERROR_MESSAGE': v.args}, status=status.HTTP_400_BAD_REQUEST) 
+        except Exception as e:
+           return Response({'ERROR_MESSAGE': e.args}, status=status.HTTP_400_BAD_REQUEST) 
 
 class SignupAPI(RegisterView):
     def create(self, request, *args, **kwargs):
@@ -97,47 +97,53 @@ class SignupAPI(RegisterView):
           else:
              response = Response(status=status.HTTP_204_NO_CONTENT, headers=headers)
           return response
-        except ValueError as v:
-          return Response({'ERROR_MESSAGE': v.args}, status=status.HTTP_400_BAD_REQUEST) 
+        except Exception as e:
+           return Response({'ERROR_MESSAGE': e.args}, status=status.HTTP_400_BAD_REQUEST) 
       
 
 class LoginAPI(LoginView): 
-    def get_response(self):
+    def post(self, request, *args, **kwargs):
         try: 
-          serializer_class = self.get_response_serializer()
-          if getattr(settings, 'REST_USE_JWT', False):
-             access_token_expiration = (timezone.now() + jwt_settings.ACCESS_TOKEN_LIFETIME)
-             refresh_token_expiration = (timezone.now() + jwt_settings.REFRESH_TOKEN_LIFETIME)
-             return_expiration_times = getattr(settings, 'JWT_AUTH_RETURN_EXPIRATION', False)
-             data = {
-                'user': self.user,
-                'access_token': self.access_token,
-                'refresh_token': self.refresh_token,
-             }
-             if return_expiration_times:
-                data['access_token_expiration'] = access_token_expiration
-                data['refresh_token_expiration'] = refresh_token_expiration
-             serializer = serializer_class(
-                instance=data,
-                context=self.get_serializer_context(),
-             )
-          elif self.token:
-             serializer = serializer_class(
-                instance=self.token,
-                context=self.get_serializer_context(),
-             )
-          else:
-            return Response(status=status.HTTP_204_NO_CONTENT)        
-          response_obj = {} 
-          response_obj['access_token'] = serializer.data['access_token']
-          response_obj['refresh_token'] = serializer.data['refresh_token'] 
-          response_obj['name'] = self.user.name 
-          response = Response(response_obj, status=status.HTTP_200_OK)
-          if getattr(settings, 'REST_USE_JWT', False):
-             set_jwt_cookies(response, self.access_token, self.refresh_token)
-          return response
-        except ValueError as v: 
-          return Response({'ERROR_MESSAGE': v.args}, status=status.HTTP_400_BAD_REQUEST)
+          self.request = request
+          self.serializer = self.get_serializer(data=self.request.data)
+          self.serializer.is_valid(raise_exception=True)
+          self.login()
+          return self.get_response()
+        except Exception as e:
+          return Response({'ERROR_MESSAGE': e.args}, status=status.HTTP_400_BAD_REQUEST)
+    def get_response(self):
+        serializer_class = self.get_response_serializer()
+        if getattr(settings, 'REST_USE_JWT', False):
+           access_token_expiration = (timezone.now() + jwt_settings.ACCESS_TOKEN_LIFETIME)
+           refresh_token_expiration = (timezone.now() + jwt_settings.REFRESH_TOKEN_LIFETIME)
+           return_expiration_times = getattr(settings, 'JWT_AUTH_RETURN_EXPIRATION', False)
+           data = {
+               'user': self.user,
+               'access_token': self.access_token,
+               'refresh_token': self.refresh_token,
+           }
+           if return_expiration_times:
+              data['access_token_expiration'] = access_token_expiration
+              data['refresh_token_expiration'] = refresh_token_expiration
+           serializer = serializer_class(
+              instance=data,
+              context=self.get_serializer_context(),
+           )
+        elif self.token:
+           serializer = serializer_class(
+              instance=self.token,
+              context=self.get_serializer_context(),
+           )
+        else:
+           return Response(status=status.HTTP_204_NO_CONTENT)        
+        response_obj = {} 
+        response_obj['access_token'] = serializer.data['access_token']
+        response_obj['refresh_token'] = serializer.data['refresh_token'] 
+        response_obj['name'] = self.user.name 
+        response = Response(response_obj, status=status.HTTP_200_OK)
+        if getattr(settings, 'REST_USE_JWT', False):
+           set_jwt_cookies(response, self.access_token, self.refresh_token)
+        return response
 
 def kakao_login(request): 
     try :
@@ -186,6 +192,8 @@ def kakao_login(request):
         return JsonResponse(accept_json)
     except ValueError as v:
         return JsonResponse({'ERROR_MESSAGE': v.args[0]}, status=status.HTTP_400_BAD_REQUEST) 
+    except Exception as e:
+           return Response({'ERROR_MESSAGE': e.args}, status=status.HTTP_400_BAD_REQUEST)
 
 class KakaoLogin(SocialLoginView):
     adapter_class = kakao_views.KakaoOAuth2Adapter
