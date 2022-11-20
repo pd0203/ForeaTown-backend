@@ -3,7 +3,7 @@ from users.serializers import *
 from rest_framework import generics, status
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
 from rest_framework_simplejwt.settings import (api_settings as jwt_settings,)
 from allauth.socialaccount.models import SocialAccount
 from allauth.socialaccount.providers.kakao import views as kakao_views
@@ -38,11 +38,13 @@ class CountryListAPI(ModelViewSet):
            return Response({'ERROR_MESSAGE': e.args}, status=status.HTTP_400_BAD_REQUEST)
 
 class MyUserInfoAPI(ModelViewSet):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticatedOrReadOnly]
     queryset = User.objects.all()   
     def get_object(self): 
         queryset = self.get_queryset()
-        if self.action == 'partial_update' or self.action == 'retrieve':
+        if self.action == 'retrieve':
+           return get_object_or_404(queryset, id=self.kwargs.get('user_id'))
+        if self.action == 'partial_update':
            return get_object_or_404(queryset, id=self.request.user.id)
         return get_object_or_404(self.get_queryset()) 
     def get_serializer_class(self):
@@ -50,7 +52,7 @@ class MyUserInfoAPI(ModelViewSet):
            return UserUpdateSerializer
         if self.action == 'retrieve':
            return UserReadSerializer 
-    def retrieve(self, request):
+    def retrieve(self, request, *args, **kwargs):
         try:
           instance = self.get_object()
           serializer = self.get_serializer(instance)
