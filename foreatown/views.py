@@ -53,15 +53,15 @@ class GatherRoomAPI(ModelViewSet):
            return GatherRoomReadSerializer       
         if self.action == 'retrieve':
            return GatherRoomRetrieveSerializer
-        if ((self.action == 'create' and not self.request.data['is_online']) or  
+        if ((self.action == 'create' and self.request.data['is_online']) == 'False' or  
             self.request.data['gather_room_category'] == 'Hiring'):
             return GatherRoomOfflineCreateSerializer
-        if self.action == 'create' and self.request.data['is_online']:
+        if self.action == 'create' and self.request.data['is_online'] == 'True':
            return GatherRoomOnlineCreateSerializer
-        if ((self.action == 'partial_update' and not self.request.data['is_online']) or  
+        if ((self.action == 'partial_update' and self.request.data['is_online']) == 'False' or  
             self.request.data['gather_room_category'] == 'Hiring'):
             return GatherRoomOfflineUpdateSerializer
-        if self.action == 'partial_update' and self.request.data['is_online']:
+        if self.action == 'partial_update' and self.request.data['is_online'] == 'True':
            return GatherRoomOnlineUpdateSerializer 
     def list(self, request, *args, **kwargs):
         try: 
