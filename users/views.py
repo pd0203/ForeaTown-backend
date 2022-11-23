@@ -76,6 +76,7 @@ class SignupAPI(RegisterView):
           data = self.get_response_data(user)
           if data:
              del(data['user'])
+             data['id'] = user.id
              data['name'] = user.name
              response = Response(
                 data,
@@ -88,7 +89,6 @@ class SignupAPI(RegisterView):
         except Exception as e:
            return Response({'ERROR_MESSAGE': e.args}, status=status.HTTP_400_BAD_REQUEST) 
       
-
 class LoginAPI(LoginView): 
     def post(self, request, *args, **kwargs):
         try: 
@@ -127,6 +127,7 @@ class LoginAPI(LoginView):
         response_obj = {} 
         response_obj['access_token'] = serializer.data['access_token']
         response_obj['refresh_token'] = serializer.data['refresh_token'] 
+        response_obj['id'] = self.user.id
         response_obj['name'] = self.user.name 
         response = Response(response_obj, status=status.HTTP_200_OK)
         if getattr(settings, 'REST_USE_JWT', False):
