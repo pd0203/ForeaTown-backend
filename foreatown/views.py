@@ -53,12 +53,12 @@ class GatherRoomAPI(ModelViewSet):
            return GatherRoomReadSerializer       
         if self.action == 'retrieve':
            return GatherRoomRetrieveSerializer
-        if ((self.action == 'create' and self.request.data['is_online']) == 'False' or  
+        if ((self.action == 'create' and self.request.data['is_online'] == 'False') or  
             self.request.data['gather_room_category'] == 'Hiring'):
             return GatherRoomOfflineCreateSerializer
         if self.action == 'create' and self.request.data['is_online'] == 'True':
            return GatherRoomOnlineCreateSerializer
-        if ((self.action == 'partial_update' and self.request.data['is_online']) == 'False' or  
+        if ((self.action == 'partial_update' and self.request.data['is_online'] == 'False') or  
             self.request.data['gather_room_category'] == 'Hiring'):
             return GatherRoomOfflineUpdateSerializer
         if self.action == 'partial_update' and self.request.data['is_online'] == 'True':
@@ -90,18 +90,7 @@ class GatherRoomAPI(ModelViewSet):
            return Response({'ERROR_MESSAGE': e.args}, status=status.HTTP_400_BAD_REQUEST)
     def create(self, request, *args, **kwargs):
         try:
-            form_data = request.data
-            json_data = {
-               'subject': form_data['subject'],
-               'content': form_data['content'],
-               'address': form_data['address'],
-               'is_online': True if form_data['is_online'] == 'True' else False, 
-               'user_limit': int(form_data['user_limit']),
-               'date_time': datetime.strptime(form_data['date_time'], '%Y-%m-%d %H:%M:%S'),
-               'creator': request.user.id,
-               'gather_room_category': {'name': form_data['gather_room_category']},
-               'gather_room_images': self.retrieve_gather_room_image_url_list(request.FILES, 'gather_room_images')
-            }
+            json_data = self.formdata_to_json(request)
             serializer = self.get_serializer(data=json_data)
             serializer.is_valid(raise_exception=True)
             self.perform_create(serializer)
@@ -112,19 +101,8 @@ class GatherRoomAPI(ModelViewSet):
     def partial_update(self, request, *args, **kwargs): 
         try :
            partial = kwargs.pop('partial', False)
-           gather_room_instance = self.get_object() 
-           form_data = request.data
-           json_data = {
-              'subject': form_data['subject'],
-              'content': form_data['content'],
-              'address': form_data['address'],
-              'is_online': True if form_data['is_online'] == 'True' else False, 
-              'user_limit': int(form_data['user_limit']),
-              'date_time': datetime.strptime(form_data['date_time'], '%Y-%m-%d %H:%M:%S'),
-              'creator': request.user.id,
-              'gather_room_category': {'name': form_data['gather_room_category']},
-              'gather_room_images': self.retrieve_gather_room_image_url_list(request.FILES, 'gather_room_images')  
-            }
+           gather_room_instance = self.get_object()
+           json_data = self.formdata_to_json(request)
            serializer = self.get_serializer(gather_room_instance, data=json_data, partial=partial)
            serializer.is_valid(raise_exception=True)
            self.perform_update(serializer)
@@ -147,6 +125,20 @@ class GatherRoomAPI(ModelViewSet):
             image_obj['img_url'] = self.s3_client.upload(image_file)
             images_list.append(image_obj)
         return images_list 
+    def formdata_to_json(self, request): 
+        form_data = request.data
+        json_data = {
+            'subject': form_data['subject'],
+            'content': form_data['content'],
+            'address': form_data['address'],
+            'is_online': True if form_data['is_online'] == 'True' else False, 
+            'user_limit': int(form_data['user_limit']),
+            'date_time': datetime.strptime(form_data['date_time'], '%Y-%m-%d %H:%M:%S'),
+            'creator': request.user.id,
+            'gather_room_category': {'name': form_data['gather_room_category']},
+            'gather_room_images': self.retrieve_gather_room_image_url_list(request.FILES, 'gather_room_images')  
+        }
+        return json_data
     
 class GatherRoomReservationAPI(ModelViewSet):
     permission_classes = [IsAuthenticated]
