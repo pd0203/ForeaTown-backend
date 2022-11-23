@@ -27,7 +27,7 @@ class GatherRoomCategory(models.Model):
 class GatherRoom(models.Model):
     subject = models.CharField(max_length=100)
     content = models.TextField(max_length=200)
-    address = models.CharField(max_length=100, null=True) 
+    address = models.CharField(max_length=100, null=True, blank=True) 
     is_online = models.BooleanField()
     avg_rating = models.FloatField(default=0.0)
     user_limit = models.PositiveSmallIntegerField(default=25)
