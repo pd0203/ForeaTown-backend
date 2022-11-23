@@ -66,20 +66,6 @@ class MyUserInfoAPI(ModelViewSet):
         except Exception as e:
            return Response({'ERROR_MESSAGE': e.args}, status=status.HTTP_400_BAD_REQUEST) 
 
-class AdditionalInfoPatchAPI(generics.UpdateAPIView):
-    permission_classes = [IsAuthenticated]
-    queryset = User.objects.all()
-    serializer_class = UserUpdateSerializer
-    def get_object(self): 
-        queryset = self.get_queryset()
-        return get_object_or_404(queryset, id=self.request.user.id)
-    def partial_update(self, request, *args, **kwargs):
-        try: 
-          kwargs['partial'] = True
-          return self.update(request, *args, **kwargs)
-        except Exception as e:
-           return Response({'ERROR_MESSAGE': e.args}, status=status.HTTP_400_BAD_REQUEST) 
-
 class SignupAPI(RegisterView):
     def create(self, request, *args, **kwargs):
         try: 
