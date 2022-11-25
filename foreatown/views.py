@@ -54,12 +54,12 @@ class GatherRoomAPI(ModelViewSet):
         if self.action == 'retrieve':
            return GatherRoomRetrieveSerializer
         if ((self.action == 'create' and self.request.data['is_online'] == 'False') or  
-            self.request.data['gather_room_category'] == 'Hiring'):
+            (self.action == 'create' and self.request.data['gather_room_category'] == 'Hiring')):
             return GatherRoomOfflineCreateSerializer
         if self.action == 'create' and self.request.data['is_online'] == 'True':
            return GatherRoomOnlineCreateSerializer
         if ((self.action == 'partial_update' and self.request.data['is_online'] == 'False') or  
-            self.request.data['gather_room_category'] == 'Hiring'):
+            (self.action == 'partial_update' and self.request.data['gather_room_category'] == 'Hiring')):
             return GatherRoomOfflineUpdateSerializer
         if self.action == 'partial_update' and self.request.data['is_online'] == 'True':
            return GatherRoomOnlineUpdateSerializer 
@@ -100,6 +100,7 @@ class GatherRoomAPI(ModelViewSet):
             return Response({'ERROR_MESSAGE': e.args}, status=status.HTTP_400_BAD_REQUEST) 
     def partial_update(self, request, *args, **kwargs): 
         try :
+           kwargs['partial'] = True
            partial = kwargs.pop('partial', False)
            gather_room_instance = self.get_object()
            json_data = self.formdata_to_json(request)
