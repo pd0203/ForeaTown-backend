@@ -16,6 +16,7 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from json.decoder import JSONDecodeError
 from myforeatown.settings import SIMPLE_JWT
+from utils.s3 import S3Client 
 
 import requests, json
 
@@ -23,6 +24,11 @@ import requests, json
 kakao_redirect_uri = getattr(settings, 'KAKAO_CALLBACK_URI')
 kakao_rest_api_key = getattr(settings, 'KAKAO_RESTAPI_KEY')
 service_base_url = getattr(settings, 'SERVICE_BASE_URL')
+
+# AWS S3 
+AWS_ACCESS_KEY_ID = getattr(settings, 'AWS_ACCESS_KEY_ID')
+AWS_SECRET_ACCESS_KEY = getattr(settings, 'AWS_SECRET_ACCESS_KEY')
+AWS_S3_BUCKET_NAME = getattr(settings, 'AWS_S3_BUCKET_NAME')
 
 class CountryListAPI(ModelViewSet):
     serializer_class = CountryReadSerializer
@@ -38,8 +44,9 @@ class CountryListAPI(ModelViewSet):
            return Response({'ERROR_MESSAGE': e.args}, status=status.HTTP_400_BAD_REQUEST)
 
 class MyUserInfoAPI(ModelViewSet):
-    permission_classes = [IsAuthenticatedOrReadOnly]
-    queryset = User.objects.all()   
+    queryset = User.objects.all()
+    permission_classes = [IsAuthenticatedOrReadOnly]   
+    s3_client = S3Client(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_S3_BUCKET_NAME)
     def get_object(self): 
         queryset = self.get_queryset()
         if self.action == 'retrieve':
@@ -62,9 +69,31 @@ class MyUserInfoAPI(ModelViewSet):
     def partial_update(self, request, *args, **kwargs):
         try: 
           kwargs['partial'] = True
-          return self.update(request, *args, **kwargs)
+          partial = kwargs.pop('partial', False)
+          user_instance = self.get_object()
+          json_data = self.formdata_to_json(request)
+          serializer = self.get_serializer(user_instance, data=json_data, partial=partial)
+          serializer.is_valid(raise_exception=True)
+          self.perform_update(serializer)
+          if getattr(user_instance, '_prefetched_objects_cache', None):
+             user_instance._prefetched_objects_cache = {}
+          return Response(serializer.data)
         except Exception as e:
            return Response({'ERROR_MESSAGE': e.args}, status=status.HTTP_400_BAD_REQUEST) 
+    def formdata_to_json(self, request): 
+        form_data = request.data
+        profile_image_file = request.FILES.get('profile_image')
+        json_data = {
+            'nickname': form_data['nickname'],
+            'age': form_data['age'],
+            'is_male': form_data['is_male'],
+            'location': form_data['location'], 
+            'country': {
+               'name': form_data['country']
+            },
+            'profile_img_url': self.s3_client.upload(profile_image_file) 
+        }
+        return json_data
 
 class SignupAPI(RegisterView):
     def create(self, request, *args, **kwargs):
