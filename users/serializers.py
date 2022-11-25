@@ -43,7 +43,7 @@ class UserUpdateSerializer(WritableNestedModelSerializer):
     country = CountryRetrieveSerializer()
     class Meta: 
         model = User   
-        fields = ['nickname', 'age', 'is_male', 'location', 'country']
+        fields = ['nickname', 'age', 'is_male', 'location', 'country', 'profile_img_url']
     def validate(self, data):
         if data['age'] < 19:
            raise ValueError('A ForeaTown user must be 19 years old or above')
