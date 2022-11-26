@@ -21,13 +21,17 @@ class CountryReadSerializer(serializers.ModelSerializer):
 
 class UserReadSerializer(serializers.ModelSerializer):
     gender = serializers.SerializerMethodField()
-    country = CountryReadSerializer() 
+    # country = CountryReadSerializer() 
+    country = serializers.SerializerMethodField()
     class Meta:
         model = User
         fields = ['id', 'nickname', 'age', 'gender', 'location', 'profile_img_url', 'country']
     def get_gender(self, obj): 
         gender = 'male' if obj.is_male else 'female'
         return gender 
+    def get_country(self, obj):
+        country = obj.country.name
+        return country 
 
 class CreatorSerializer(serializers.ModelSerializer):
     class Meta:
