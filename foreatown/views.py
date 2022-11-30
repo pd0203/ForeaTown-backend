@@ -8,7 +8,7 @@ from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnl
 from django.shortcuts import get_object_or_404
 from django.conf import settings
 from datetime import datetime
-from utils.s3 import S3Client
+from utils import S3Client, GatherRoomListPagination
 
 AWS_ACCESS_KEY_ID = getattr(settings, 'AWS_ACCESS_KEY_ID')
 AWS_SECRET_ACCESS_KEY = getattr(settings, 'AWS_SECRET_ACCESS_KEY')
@@ -17,6 +17,7 @@ AWS_S3_BUCKET_NAME = getattr(settings, 'AWS_S3_BUCKET_NAME')
 class GatherRoomAPI(ModelViewSet):
     queryset = GatherRoom.objects.all()
     permission_classes = [IsAuthenticatedOrReadOnly]    
+    pagination_class = GatherRoomListPagination
     s3_client = S3Client(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_S3_BUCKET_NAME)
     def get_object(self):
         queryset = self.get_queryset()
@@ -42,11 +43,15 @@ class GatherRoomAPI(ModelViewSet):
            return GatherRoomOnlineUpdateSerializer 
     def list(self, request, *args, **kwargs):
         try: 
+           gather_room_queryset = self.filter_queryset(self.get_queryset())
            gather_room_category = kwargs.get('gather_room_category_id') 
-           gather_room_instance = self.queryset
            if gather_room_category: 
-              gather_room_instance = GatherRoom.objects.filter(gather_room_category=kwargs.get('gather_room_category_id'))
-           serializer = self.get_serializer(gather_room_instance, many=True)
+              gather_room_queryset = GatherRoom.objects.filter(gather_room_category=kwargs.get('gather_room_category_id'))
+           page = self.paginate_queryset(gather_room_queryset)
+           if page is not None:
+              serializer = self.get_serializer(page, many=True)
+              return self.get_paginated_response(serializer.data)
+           serializer = self.get_serializer(gather_room_queryset, many=True)
            return Response(serializer.data)
         except Exception as e:
            return Response({'ERROR_MESSAGE': e.args}, status=status.HTTP_400_BAD_REQUEST)
