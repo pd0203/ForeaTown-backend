@@ -1,9 +1,9 @@
 from users.models import *
 from users.serializers import *
-from rest_framework import generics, status
+from rest_framework import status
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
+from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from rest_framework_simplejwt.settings import (api_settings as jwt_settings,)
 from allauth.socialaccount.models import SocialAccount
 from allauth.socialaccount.providers.kakao import views as kakao_views
@@ -16,7 +16,7 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from json.decoder import JSONDecodeError
 from myforeatown.settings import SIMPLE_JWT
-from utils.s3 import S3Client 
+from utils import S3Client 
 
 import requests, json
 

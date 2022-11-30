@@ -15,7 +15,7 @@ SECRET_KEY = os.environ.get('SECRET_KEY')
 
 DEBUG = False 
 
-ALLOWED_HOSTS = ['api.foreatown.com']
+ALLOWED_HOSTS = ['*']
 
 SITE_ID = 12
 
@@ -202,7 +202,7 @@ CORS_ALLOW_METHODS = [
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',
-    ],
+    ]
     # 'DEFAULT_FILTER_BACKENDS': [
     #     'django_filters.rest_framework.DjangoFilterBackend',
     # ],
