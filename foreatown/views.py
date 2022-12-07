@@ -47,6 +47,9 @@ class GatherRoomAPI(ModelViewSet):
            gather_room_category = kwargs.get('gather_room_category_id') 
            if gather_room_category: 
               gather_room_queryset = GatherRoom.objects.filter(gather_room_category=kwargs.get('gather_room_category_id'))
+           gather_room_ordering_condition = request.query_params.get('order_by')
+           if gather_room_ordering_condition == 'latest': 
+              gather_room_queryset = gather_room_queryset.order_by('-id')
            page = self.paginate_queryset(gather_room_queryset)
            if page is not None:
               serializer = self.get_serializer(page, many=True)
