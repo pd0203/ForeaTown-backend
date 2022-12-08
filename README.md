@@ -19,11 +19,11 @@
 - `유저 C.R.U.D API` 기능 구현
 - `게시글 C.R.U.D API` 구현
 - `예약 C.R.U.D API` 구현
-- S3를 활용한 파일 저장 기능 구현
-- EC2, RDS, Gunicorn, Nginx를 활용한 서버 배포
-- Route53을 활용한 도메인 구매 및 서버 연결
-- Certbot으로 let's encrypt 무료 HTTPS 인증서 발급을 통한 HTTPS 배포
-- Slack, Zoom, Notion 등의 협업 툴을 활용한 프로젝트 진행
+- `S3`를 활용한 파일 저장 기능 구현
+- `EC2`, `RDS`, `Gunicorn`, `Nginx`를 활용한 서버 배포
+- `Route53`을 활용한 도메인 구매 및 서버 연결
+- `Certbot`으로 let's encrypt 무료 HTTPS 인증서 발급을 통한 HTTPS 배포
+- `Slack`, `Zoom`, `Notion` 등의 협업 툴을 활용한 프로젝트 진행
 
 # 사용 기술 스택
 
