@@ -1,5 +1,8 @@
 # Foreatown-backend
 
+# API Documentation
+- https://documenter.getpostman.com/view/9504594/2s8YRjnY9a
+
 # 서비스 설명
 
 - 한국 거주 중인 외국인들을 위한 모바일 앱 기반 커뮤니티 서비스
