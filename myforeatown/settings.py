@@ -13,9 +13,11 @@ load_dotenv()
 
 SECRET_KEY = os.environ.get('SECRET_KEY')
 
-DEBUG = False 
+DEBUG = True 
 
 ALLOWED_HOSTS = ['*']
+
+INTERNAL_IPS = ('127.0.0.1',)
 
 SITE_ID = 12
 
@@ -66,6 +68,9 @@ INSTALLED_APPS = [
     'corsheaders',
     'django_filters',
 
+    # debug toolbar
+    'debug_toolbar',
+
     # My App
     'users',
     'foreatown'
@@ -98,7 +103,8 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware'
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    "debug_toolbar.middleware.DebugToolbarMiddleware",
 ]
 
 TEMPLATES = [

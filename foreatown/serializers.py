@@ -12,7 +12,7 @@ class GatherRoomReadSerializer(serializers.ModelSerializer):
         model = GatherRoom
         fields = ['id', 'subject', 'address', 'is_online', 'user_limit', 'participants_count', 'date_time', 'gather_room_category'] 
     def get_participants_count(self, obj): 
-        return UserGatherRoomReservation.objects.filter(gather_room=obj.id).count()
+        return obj.participants.count()
 
 class GatherRoomCategoryRetrieveIdByNameSerializer(serializers.RelatedField):
     def to_representation(self, value):
