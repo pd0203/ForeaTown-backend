@@ -19,6 +19,11 @@ class GatherRoomAPI(ModelViewSet):
     permission_classes = [IsAuthenticatedOrReadOnly]    
     pagination_class = GatherRoomListPagination
     s3_client = S3Client(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_S3_BUCKET_NAME)
+    def get_queryset(self): 
+        queryset = GatherRoom.objects.all()
+        if self.action == 'list' or 'my_list':
+           queryset = GatherRoom.objects.prefetch_related('participants').all() 
+        return queryset 
     def get_object(self):
         queryset = self.get_queryset()
         if self.action == 'retrieve':
@@ -46,7 +51,7 @@ class GatherRoomAPI(ModelViewSet):
            gather_room_queryset = self.filter_queryset(self.get_queryset())
            gather_room_category = kwargs.get('gather_room_category_id') 
            if gather_room_category: 
-              gather_room_queryset = GatherRoom.objects.filter(gather_room_category=kwargs.get('gather_room_category_id'))
+              gather_room_queryset = GatherRoom.objects.filter(gather_room_category=kwargs.get('gather_room_category_id')).prefetch_related('participants')
            gather_room_ordering_condition = request.query_params.get('order_by')
            if gather_room_ordering_condition == 'latest': 
               gather_room_queryset = gather_room_queryset.order_by('-id')
