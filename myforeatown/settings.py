@@ -238,3 +238,20 @@ REST_USE_JWT = True
 
 # 엑셀 파일 데이터를 DB에 삽입시 발생하는 허용량 초과 범위를 늘려주는 명령어
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 30000 
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'level': 'DEBUG',
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'loggers': {
+        'django.db.backends': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+        },
+    },
+}
