@@ -1,7 +1,11 @@
 from rest_framework import serializers
+from rest_framework.serializers import ModelSerializer
+from rest_framework.serializers import CharField
+from rest_framework.exceptions import ValidationError
 from users.models import User, Country 
 from drf_writable_nested.serializers import WritableNestedModelSerializer
-from dj_rest_auth.registration.serializers import RegisterSerializer
+from django.contrib.auth.password_validation import validate_password
+from django.contrib.auth.hashers import make_password
 
 class CountryRetrieveSerializer(serializers.RelatedField):
     def to_representation(self, value):
@@ -53,13 +57,27 @@ class UserUpdateSerializer(WritableNestedModelSerializer):
            raise ValueError('A ForeaTown user must be 19 years old or above')
         return data
 
-class CustomRegisterSerializer(RegisterSerializer):
-    username = None
-    name = serializers.CharField()
-    def get_cleaned_data(self):
-        data = super().get_cleaned_data()
-        data['name'] = self.validated_data.get('name', '')
-        return data
+class UserSignUpSerializer(ModelSerializer):
+    password2 = CharField(write_only=True)
+    class Meta:
+        model = User 
+        fields = ['id', 'email', 'password', 'password2', 'name']
+    def create(self, validated_data):
+        password = validated_data['password']
+        password2 = validated_data['password2']
+        if password != password2:
+            raise ValidationError('PASSWORD1 AND PASSWORD2 DO NOT MATCH')
+        validated_data.pop('password2')
+        encoded_password = make_password(password)
+        validated_data['password'] = encoded_password
+        instance = User.objects.create(**validated_data)
+        return instance
+    def validate_password(self, password):
+        try:
+           validate_password(password)
+           return password
+        except ValidationError as v:
+            raise ValidationError(v.args)
 
 class UserPostSerializer(serializers.ModelSerializer):
     class Meta:
