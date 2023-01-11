@@ -8,7 +8,7 @@ from rest_framework_simplejwt.settings import (api_settings as jwt_settings,)
 from allauth.socialaccount.models import SocialAccount
 from allauth.socialaccount.providers.kakao import views as kakao_views
 from allauth.socialaccount.providers.oauth2.client import OAuth2Client
-from dj_rest_auth.registration.views import SocialLoginView, RegisterView, LoginView
+from dj_rest_auth.registration.views import SocialLoginView, LoginView
 from dj_rest_auth.jwt_auth import set_jwt_cookies
 from django.conf import settings
 from django.utils import timezone
@@ -17,6 +17,9 @@ from django.shortcuts import get_object_or_404
 from json.decoder import JSONDecodeError
 from myforeatown.settings import SIMPLE_JWT
 from utils import S3Client 
+from rest_framework.generics import CreateAPIView
+from django.db import transaction 
+from utils.token import generate_token_set 
 
 import requests, json
 
@@ -95,28 +98,19 @@ class MyUserInfoAPI(ModelViewSet):
         }
         return json_data
 
-class SignupAPI(RegisterView):
-    def create(self, request, *args, **kwargs):
-        try: 
-          serializer = self.get_serializer(data=request.data)
-          serializer.is_valid(raise_exception=True)
-          user = self.perform_create(serializer)
-          headers = self.get_success_headers(serializer.data)
-          data = self.get_response_data(user)
-          if data:
-             del(data['user'])
-             data['id'] = user.id
-             data['name'] = user.name
-             response = Response(
-                data,
-                status=status.HTTP_201_CREATED,
-                headers=headers,
-             )
-          else:
-             response = Response(status=status.HTTP_204_NO_CONTENT, headers=headers)
-          return response
-        except Exception as e:
-           return Response({'ERROR_MESSAGE': e.args}, status=status.HTTP_400_BAD_REQUEST) 
+class UserSignUpAPI(CreateAPIView): 
+      serializer_class = UserSignUpSerializer
+      @transaction.atomic
+      def create(self, request, *args, **kwargs):
+          try:
+            instance = self.get_serializer(data=request.data)
+            instance.is_valid(raise_exception=True)
+            instance.save()
+            user_id = instance.data['id']
+            token_set = generate_token_set(user_id) 
+            return Response(token_set, status=status.HTTP_201_CREATED)
+          except Exception as e:
+            return Response({'ERROR_MESSAGE': e.args}, status=status.HTTP_400_BAD_REQUEST) 
       
 class LoginAPI(LoginView): 
     def post(self, request, *args, **kwargs):
