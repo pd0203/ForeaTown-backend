@@ -87,9 +87,6 @@ ACCOUNT_USERNAME_REQUIRED = False
 ACCOUNT_AUTHENTICATION_METHOD = 'email'
 ACCOUNT_EMAIL_VERIFICATION = 'none'
 
-# dj-rest-auth 회원가입 커스터마이징을 위한 어뎁터 설정
-ACCOUNT_ADAPTER = 'users.adapters.CustomAccountAdapter'
-
 # 로그아웃 버튼 클릭 시 자동 로그아웃
 # ACCOUNT_LOGOUT_ON_GET = True 
 

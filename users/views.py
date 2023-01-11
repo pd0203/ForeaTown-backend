@@ -4,14 +4,11 @@ from rest_framework import status
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
-from rest_framework_simplejwt.settings import (api_settings as jwt_settings,)
 from allauth.socialaccount.models import SocialAccount
 from allauth.socialaccount.providers.kakao import views as kakao_views
 from allauth.socialaccount.providers.oauth2.client import OAuth2Client
-from dj_rest_auth.registration.views import SocialLoginView, LoginView
-from dj_rest_auth.jwt_auth import set_jwt_cookies
+from dj_rest_auth.registration.views import SocialLoginView
 from django.conf import settings
-from django.utils import timezone
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from json.decoder import JSONDecodeError
@@ -112,50 +109,21 @@ class UserSignUpAPI(CreateAPIView):
           except Exception as e:
             return Response({'ERROR_MESSAGE': e.args}, status=status.HTTP_400_BAD_REQUEST) 
       
-class LoginAPI(LoginView): 
-    def post(self, request, *args, **kwargs):
-        try: 
-          self.request = request
-          self.serializer = self.get_serializer(data=self.request.data)
-          self.serializer.is_valid(raise_exception=True)
-          self.login()
-          return self.get_response()
-        except Exception as e:
-          return Response({'ERROR_MESSAGE': e.args}, status=status.HTTP_400_BAD_REQUEST)
-    def get_response(self):
-        serializer_class = self.get_response_serializer()
-        if getattr(settings, 'REST_USE_JWT', False):
-           access_token_expiration = (timezone.now() + jwt_settings.ACCESS_TOKEN_LIFETIME)
-           refresh_token_expiration = (timezone.now() + jwt_settings.REFRESH_TOKEN_LIFETIME)
-           return_expiration_times = getattr(settings, 'JWT_AUTH_RETURN_EXPIRATION', False)
-           data = {
-               'user': self.user,
-               'access_token': self.access_token,
-               'refresh_token': self.refresh_token,
-           }
-           if return_expiration_times:
-              data['access_token_expiration'] = access_token_expiration
-              data['refresh_token_expiration'] = refresh_token_expiration
-           serializer = serializer_class(
-              instance=data,
-              context=self.get_serializer_context(),
-           )
-        elif self.token:
-           serializer = serializer_class(
-              instance=self.token,
-              context=self.get_serializer_context(),
-           )
-        else:
-           return Response(status=status.HTTP_204_NO_CONTENT)        
-        response_obj = {} 
-        response_obj['access_token'] = serializer.data['access_token']
-        response_obj['refresh_token'] = serializer.data['refresh_token'] 
-        response_obj['id'] = self.user.id
-        response_obj['name'] = self.user.name 
-        response = Response(response_obj, status=status.HTTP_200_OK)
-        if getattr(settings, 'REST_USE_JWT', False):
-           set_jwt_cookies(response, self.access_token, self.refresh_token)
-        return response
+class UserLoginAPI(CreateAPIView):
+      serializer_class = UserLoginSerializer 
+      @transaction.atomic
+      def create(self, request, *args, **kwargs):
+          try:
+            instance = self.get_serializer(data=request.data)
+            instance.is_valid(raise_exception=True)
+            instance.save()
+            user_id = instance.data['id']
+            token_set = generate_token_set(user_id) 
+            return Response(token_set, status=status.HTTP_200_OK)
+          except NotFound as n:
+            return Response({'ERROR_MESSAGE': n.args}, status=status.HTTP_404_NOT_FOUND)
+          except Exception as e:
+            return Response({'ERROR_MESSAGE': e.args}, status=status.HTTP_400_BAD_REQUEST) 
 
 def kakao_login(request): 
     try :
