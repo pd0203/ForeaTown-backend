@@ -2,10 +2,12 @@ from rest_framework import serializers
 from rest_framework.serializers import ModelSerializer
 from rest_framework.serializers import CharField
 from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import NotFound
 from users.models import User, Country 
 from drf_writable_nested.serializers import WritableNestedModelSerializer
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.hashers import make_password
+from django.contrib.auth.hashers import check_password
 
 class CountryRetrieveSerializer(serializers.RelatedField):
     def to_representation(self, value):
@@ -79,6 +81,25 @@ class UserSignUpSerializer(ModelSerializer):
         except ValidationError as v:
             raise ValidationError(v.args)
 
+class UserLoginSerializer(ModelSerializer):
+    email = CharField()
+    password = CharField(write_only=True) 
+    class Meta:
+        model = User
+        fields = ['id', 'email', 'password']
+    def create(self, validated_data):
+        instance = User.objects.get(email=validated_data['email'])
+        return instance 
+    def validate(self, data):
+        user = User.objects.filter(email=data['email']).first()
+        if not user: 
+           raise NotFound('USER NOT FOUND')
+        raw_password = data['password']
+        encoded_password = user.password
+        if check_password(raw_password, encoded_password) is False:
+           raise ValidationError('PASSWORD IS INCORRECT') 
+        return data 
+        
 class UserPostSerializer(serializers.ModelSerializer):
     class Meta:
         model = User

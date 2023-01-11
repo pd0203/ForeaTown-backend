@@ -54,5 +54,8 @@ class User(AbstractUser):
 
     class Meta:
         db_table = 'users'
+        indexes = [
+                models.Index(fields=['email'])
+        ]
     def __str__(self):
         return self.name + ': ' + self.email
